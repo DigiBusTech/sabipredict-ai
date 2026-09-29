@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     role TEXT NOT NULL DEFAULT 'free_user' CHECK (role IN ('admin', 'vip_user', 'free_user')),
     subscription_status TEXT NOT NULL DEFAULT 'inactive' CHECK (subscription_status IN ('active', 'inactive', 'canceled', 'past_due')),
     subscription_tier TEXT NOT NULL DEFAULT 'free' CHECK (subscription_tier IN ('free', 'vip')),
+    vip_until TIMESTAMPTZ,
+
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
@@ -65,7 +67,26 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 2. PREDICTIONS TABLE (With match results & outcomes)
+-- 2. FIXTURES TABLE (Supports both Sportsmonks numeric IDs and The Odds API string hashes like c54a807...)
+CREATE TABLE IF NOT EXISTS public.fixtures (
+    fixture_id TEXT PRIMARY KEY,
+    home_team TEXT NOT NULL,
+    away_team TEXT NOT NULL,
+    home_logo TEXT DEFAULT '',
+    away_logo TEXT DEFAULT '',
+    league TEXT NOT NULL,
+    country TEXT NOT NULL DEFAULT 'International',
+    match_date DATE NOT NULL,
+    match_time TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    starting_at TIMESTAMPTZ,
+    raw_data JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE INDEX IF NOT EXISTS idx_fixtures_match_date ON public.fixtures(match_date);
+
+-- 3. PREDICTIONS TABLE (With match results & outcomes, accepts string hashes or numeric IDs)
 CREATE TABLE IF NOT EXISTS public.predictions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     fixture_id TEXT NOT NULL,
@@ -77,6 +98,7 @@ CREATE TABLE IF NOT EXISTS public.predictions (
     country TEXT NOT NULL DEFAULT 'International',
     match_date DATE NOT NULL,
     match_time TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    starting_at TIMESTAMPTZ,
     market TEXT NOT NULL,
     odds NUMERIC(6, 2) NOT NULL DEFAULT 1.50 CHECK (odds > 1.00),
     confidence_score INTEGER NOT NULL DEFAULT 70 CHECK (confidence_score BETWEEN 1 AND 100),
@@ -86,14 +108,24 @@ CREATE TABLE IF NOT EXISTS public.predictions (
     home_score INTEGER DEFAULT NULL,
     away_score INTEGER DEFAULT NULL,
     prediction_outcome TEXT NOT NULL DEFAULT 'Pending' CHECK (prediction_outcome IN ('Pending', 'Won', 'Lost', 'Void')),
+    result TEXT NOT NULL DEFAULT 'pending',
+    raw_data JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
+-- Ensure fixture_id is TEXT (converts from INTEGER or UUID if previously configured)
+ALTER TABLE IF EXISTS public.predictions ALTER COLUMN fixture_id TYPE TEXT;
+ALTER TABLE IF EXISTS public.predictions ADD COLUMN IF NOT EXISTS starting_at TIMESTAMPTZ;
+ALTER TABLE IF EXISTS public.predictions ADD COLUMN IF NOT EXISTS result TEXT DEFAULT 'pending';
+ALTER TABLE IF EXISTS public.predictions ADD COLUMN IF NOT EXISTS raw_data JSONB DEFAULT '{}'::jsonb;
+
+CREATE INDEX IF NOT EXISTS idx_predictions_fixture_id ON public.predictions(fixture_id);
 CREATE INDEX IF NOT EXISTS idx_predictions_match_date ON public.predictions(match_date);
 CREATE INDEX IF NOT EXISTS idx_predictions_status ON public.predictions(status);
 CREATE INDEX IF NOT EXISTS idx_predictions_tier ON public.predictions(tier);
 CREATE INDEX IF NOT EXISTS idx_predictions_outcome ON public.predictions(prediction_outcome);
+CREATE INDEX IF NOT EXISTS idx_predictions_result ON public.predictions(result);
 
 -- 3. BLOG POSTS TABLE
 CREATE TABLE IF NOT EXISTS public.blog_posts (
@@ -133,6 +165,21 @@ CREATE TABLE IF NOT EXISTS public.subscription_plans (
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
+-- 6. SUBSCRIPTION REMINDER LOGS TABLE
+CREATE TABLE IF NOT EXISTS public.subscription_reminder_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    stage TEXT NOT NULL CHECK (stage IN ('5_days', '3_days', 'exact_day', 'manual')),
+    status TEXT NOT NULL DEFAULT 'sent' CHECK (status IN ('sent', 'failed')),
+    vip_until TIMESTAMPTZ,
+    error_message TEXT,
+    sent_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE INDEX IF NOT EXISTS idx_reminder_logs_user_id ON public.subscription_reminder_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_reminder_logs_sent_at ON public.subscription_reminder_logs(sent_at);
+
 
 
 -- =============================================================================
@@ -140,10 +187,20 @@ CREATE TABLE IF NOT EXISTS public.subscription_plans (
 -- =============================================================================
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.fixtures ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public can view fixtures" ON public.fixtures;
+CREATE POLICY "Public can view fixtures" ON public.fixtures FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Admin full control on fixtures" ON public.fixtures;
+CREATE POLICY "Admin full control on fixtures" ON public.fixtures FOR ALL USING (public.is_admin());
+
 ALTER TABLE public.predictions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.blog_posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subscription_plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.subscription_reminder_logs ENABLE ROW LEVEL SECURITY;
+
 
 -- PROFILES POLICIES
 DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
@@ -207,6 +264,12 @@ DROP POLICY IF EXISTS "Admin full access on subscription plans" ON public.subscr
 CREATE POLICY "Admin full access on subscription plans"
     ON public.subscription_plans FOR ALL
     USING (public.is_admin());
+-- SUBSCRIPTION REMINDER LOGS POLICIES
+DROP POLICY IF EXISTS "Admin full access on reminder logs" ON public.subscription_reminder_logs;
+CREATE POLICY "Admin full access on reminder logs"
+    ON public.subscription_reminder_logs FOR ALL
+    USING (public.is_admin());
+
 
 -- =============================================================================
 -- INITIAL DEFAULT SYSTEM SETTINGS & SEED PLANS
@@ -227,6 +290,12 @@ INSERT INTO public.system_settings (key, value, description) VALUES
     'ai_llm_settings',
     '{"active_provider": "groq", "model": "llama-3.3-70b-versatile", "gemini_api_key": "", "groq_api_key": "", "system_prompt": "You are SabiPredict AI, an elite quantitative sports betting analyst. Evaluate the football fixture using Poisson expected goals (xG), recent team form, and head-to-head records. Propose a high-value betting market with estimated odds, probability, and a concise tactical rationale paragraph explaining why the selection has positive expected value (+EV)."}'::jsonb,
     'Active LLM provider (Gemini or Groq), model selection, and prompt template'
+,
+(
+    'site_branding',
+    '{"site_name": "SabiPredict AI", "site_tagline": "Quantitative Football Intelligence", "logo_url": "", "favicon_url": ""}'::jsonb,
+    'Site branding configuration including logo and favicon'
+)
 )
 ON CONFLICT (key) DO NOTHING;
 

@@ -3,35 +3,63 @@ import {
   getAdminPredictions, 
   getBlogPosts, 
   getSystemSettings, 
-  getSubscriptionPlans 
+  getSubscriptionPlans,
+  getSiteBranding,
+  getVipProfiles,
+  getSubscriptionReminderLogs
 } from '@/lib/db';
+import { fetchAvailableLeagues } from '@/lib/fixtures-service';
 import { 
   SportsmonksSettings, 
   PaymentGatewaySettings, 
-  AILLMSettings 
+  AILLMSettings,
+  DataProviderSettings
 } from '@/lib/types';
 import AdminDashboardClient from '@/components/admin/AdminDashboardClient';
 
 export default async function AdminDashboardPage() {
-  const [predictions, posts, sportsmonksSettings, paymentSettings, aiSettings, plans] =
-    await Promise.all([
-      getAdminPredictions(),
-      getBlogPosts(false), // Fetch all posts including drafts
-      getSystemSettings<SportsmonksSettings>('sportsmonks'),
-      getSystemSettings<PaymentGatewaySettings>('payment_gateways'),
-      getSystemSettings<AILLMSettings>('ai_llm_settings'),
-      getSubscriptionPlans(),
-    ]);
+  const [
+    predictions,
+    posts,
+    dataProviderSettings,
+    sportsmonksSettings,
+    paymentSettings,
+    aiSettings,
+    plans,
+    brandingSettings,
+    vipProfiles,
+    reminderLogs,
+  ] = await Promise.all([
+    getAdminPredictions(),
+    getBlogPosts(false),
+    getSystemSettings<DataProviderSettings>('data_provider_settings'),
+    getSystemSettings<SportsmonksSettings>('sportsmonks'),
+    getSystemSettings<PaymentGatewaySettings>('payment_gateways'),
+    getSystemSettings<AILLMSettings>('ai_llm_settings'),
+    getSubscriptionPlans(),
+    getSiteBranding(),
+    getVipProfiles(),
+    getSubscriptionReminderLogs(100),
+  ]);
+
+  const { leagues, activeProvider } = await fetchAvailableLeagues();
 
   return (
     <AdminDashboardClient
       predictions={predictions}
       posts={posts}
+      dataProviderSettings={dataProviderSettings}
       sportsmonksSettings={sportsmonksSettings}
       paymentSettings={paymentSettings}
       aiSettings={aiSettings}
       plans={plans}
+      brandingSettings={brandingSettings}
+      vipProfiles={vipProfiles}
+      reminderLogs={reminderLogs}
+      initialLeagues={leagues}
+      initialProvider={activeProvider}
     />
   );
 }
+
 

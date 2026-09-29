@@ -33,7 +33,7 @@ export default async function VipLoungePage() {
           </h1>
 
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-            High-conviction quantitative picks. Filtered strictly for selections with Expected Value &gt; +15% and Poisson model confidence above 80%.
+            High-confidence winning picks. Filtered strictly for low-risk selections with model confidence above 80%.
           </p>
 
           <div className="pt-2 flex flex-wrap gap-4 text-xs font-semibold text-amber-300">
@@ -41,10 +41,10 @@ export default async function VipLoungePage() {
               <CheckCircle2 className="h-4 w-4 text-amber-400" /> 84.6% Historical Win Rate
             </span>
             <span className="flex items-center gap-1">
-              <Shield className="h-4 w-4 text-amber-400" /> Fractional Kelly Sizing
+              <Shield className="h-4 w-4 text-amber-400" /> Safe Bankroll Sizing
             </span>
             <span className="flex items-center gap-1">
-              <Zap className="h-4 w-4 text-amber-400" /> Live Sportsmonks Feed
+              <Zap className="h-4 w-4 text-amber-400" /> Live Match Feed Active
             </span>
           </div>
         </div>

@@ -1,0 +1,35 @@
+import { MetadataRoute } from 'next';
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: 'SabiPredict AI - Quantitative Football Intelligence',
+    short_name: 'SabiPredict',
+    description:
+      'Sportsmonks v3 telemetry, Poisson expected goals (xG), and positive Expected Value (+EV) sports predictions.',
+    start_url: '/',
+    display: 'standalone',
+    background_color: '#0B132B',
+    theme_color: '#0B132B',
+    orientation: 'portrait-primary',
+    icons: [
+      {
+        src: '/icons/icon-192.svg',
+        sizes: '192x192',
+        type: 'image/svg+xml',
+        purpose: 'any',
+      },
+      {
+        src: '/icons/icon-512.svg',
+        sizes: '512x512',
+        type: 'image/svg+xml',
+        purpose: 'any',
+      },
+      {
+        src: '/icons/icon.svg',
+        sizes: '512x512',
+        type: 'image/svg+xml',
+        purpose: 'maskable',
+      },
+    ],
+  };
+}

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchSportsmonksFixtures } from '@/lib/sportsmonks';
+import { fetchFixturesFromActiveProvider } from '@/lib/fixtures-service';
 import { evaluateFixtureWithAI } from '@/lib/ai-engine';
 import { insertPredictions, getPredictions } from '@/lib/db';
 
@@ -23,10 +23,10 @@ async function handleGenerate(req: NextRequest) {
     const startStr = today.toISOString().split('T')[0];
     const endStr = future.toISOString().split('T')[0];
 
-    // 1. Fetch upcoming fixtures from Sportsmonks
-    const rawFixtures = await fetchSportsmonksFixtures(startStr, endStr);
+    // 1. Fetch upcoming fixtures & live odds from active provider
+    const rawFixtures = await fetchFixturesFromActiveProvider(startStr, endStr);
 
-    // 2. Evaluate with AI
+    // 2. Evaluate with AI using strict low-risk system prompt & raw telemetry context
     const evaluated = await Promise.all(
       rawFixtures.map((f) => evaluateFixtureWithAI(f))
     );
@@ -56,4 +56,5 @@ async function handleGenerate(req: NextRequest) {
     );
   }
 }
+
 

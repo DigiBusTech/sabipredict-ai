@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchSportsmonksFixtures } from '@/lib/sportsmonks';
+import { fetchFixturesFromActiveProvider } from '@/lib/fixtures-service';
 import { insertPredictions } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
@@ -22,12 +22,12 @@ async function handleSync(req: NextRequest) {
     const startStr = today.toISOString().split('T')[0];
     const endStr = future.toISOString().split('T')[0];
 
-    const fixtures = await fetchSportsmonksFixtures(startStr, endStr);
+    const fixtures = await fetchFixturesFromActiveProvider(startStr, endStr);
     await insertPredictions(fixtures);
 
     return NextResponse.json({
       success: true,
-      message: `Successfully synchronized ${fixtures.length} fixtures from Sportsmonks.`,
+      message: `Successfully synchronized ${fixtures.length} fixtures from active provider.`,
       count: fixtures.length,
       fixtures: fixtures.slice(0, 5),
     });
@@ -39,4 +39,5 @@ async function handleSync(req: NextRequest) {
     );
   }
 }
+
 

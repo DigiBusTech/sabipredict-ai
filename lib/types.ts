@@ -11,6 +11,8 @@ export interface UserProfile {
   subscription_tier: SubscriptionTier;
   created_at: string;
   updated_at: string;
+  vip_until?: string | null;
+
 }
 
 export type PredictionTier = 'free' | 'vip';
@@ -37,6 +39,10 @@ export interface Prediction {
   home_score?: number | null;
   away_score?: number | null;
   prediction_outcome: PredictionOutcome;
+  raw_data?: any; // Live odds, bookmaker values, and match insights from API provider
+  starting_at?: string;
+  result?: string;
+
   created_at?: string;
   updated_at?: string;
 }
@@ -54,6 +60,22 @@ export interface BlogPost {
   read_time?: string | null;
   created_at: string;
   updated_at?: string;
+}
+
+export type DataProviderType = 'sportsmonks' | 'the-odds-api';
+
+export interface DataProviderSettings {
+  active_provider: DataProviderType;
+  sportsmonks_api_key: string;
+  the_odds_api_key: string;
+}
+export interface LeagueOption {
+  id: string;
+  name: string;
+  country: string;
+  provider: DataProviderType;
+  sport_key?: string;
+  is_active?: boolean;
 }
 
 export interface SportsmonksSettings {
@@ -87,4 +109,75 @@ export interface SubscriptionPlan {
   is_active: boolean;
   created_at?: string;
 }
+export interface SiteBrandingSettings {
+  site_name: string;
+  site_tagline?: string;
+  logo_url?: string;
+  favicon_url?: string;
+}
+
+export type SubscriptionReminderStage = '5_days' | '3_days' | 'exact_day' | 'manual';
+export type SubscriptionReminderStatus = 'sent' | 'failed';
+
+export interface SubscriptionReminderLog {
+  id: string;
+  user_id: string;
+  email: string;
+  stage: SubscriptionReminderStage;
+  status: SubscriptionReminderStatus;
+  vip_until?: string | null;
+  error_message?: string | null;
+  sent_at: string;
+  full_name?: string | null;
+}
+
+// VIP-Exclusive Analytics
+export interface FormMatch {
+  opponent: string;
+  is_home: boolean;
+  score: string;
+  result: 'W' | 'D' | 'L';
+  xg: number;
+  date: string;
+}
+
+export interface PlayerInjury {
+  player: string;
+  team: string;
+  position: string;
+  status: 'Out' | 'Doubtful' | 'Suspended';
+  reason: string;
+}
+
+export interface MatchStatMetric {
+  label: string;
+  homeValue: number;
+  awayValue: number;
+  unit?: string;
+}
+
+export interface MatchAnalytics {
+  home_form: FormMatch[];
+  away_form: FormMatch[];
+  h2h_matches: {
+    date: string;
+    home_score: number;
+    away_score: number;
+    winner: 'home' | 'away' | 'draw';
+  }[];
+  h2h_summary: {
+    home_wins: number;
+    draws: number;
+    away_wins: number;
+    total_goals: number;
+  };
+  injuries: PlayerInjury[];
+  stats: MatchStatMetric[];
+  xg_trends: {
+    match_num: string;
+    home_xg: number;
+    away_xg: number;
+  }[];
+}
+
 

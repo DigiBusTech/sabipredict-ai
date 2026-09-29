@@ -24,10 +24,10 @@ export default async function PredictionsPage() {
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-          AI Football Predictions & Betting Tips
+          Today&apos;s Top Football Tips & Predictions
         </h1>
         <p className="mt-1 text-xs sm:text-sm text-slate-400">
-          Algorithmic Expected Value (+EV) models, Poisson goal distribution, and live Sportsmonks match data.
+          AI-driven match predictions, live team stats, and verified low-risk football betting tips.
         </p>
       </div>
 

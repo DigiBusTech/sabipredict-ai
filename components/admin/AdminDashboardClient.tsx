@@ -3,48 +3,70 @@
 import React, { useState } from 'react';
 import { 
   CheckSquare, BookOpen, Key, Cpu, CreditCard, 
-  Layers 
+  Palette, Bell 
 } from 'lucide-react';
 import { 
   Prediction, BlogPost, SportsmonksSettings, 
-  PaymentGatewaySettings, AILLMSettings, SubscriptionPlan 
+  PaymentGatewaySettings, AILLMSettings, SubscriptionPlan,
+  DataProviderSettings, SiteBrandingSettings, UserProfile,
+  SubscriptionReminderLog, LeagueOption, DataProviderType
 } from '@/lib/types';
 import PredictionsTab from './PredictionsTab';
 import BlogTab from './BlogTab';
 import ApiTab from './ApiTab';
 import AiTab from './AiTab';
 import PlansTab from './PlansTab';
+import BrandingTab from './BrandingTab';
+import RemindersTab from './RemindersTab';
 
 interface AdminDashboardClientProps {
   predictions: Prediction[];
   posts: BlogPost[];
+  dataProviderSettings?: DataProviderSettings | null;
   sportsmonksSettings: SportsmonksSettings | null;
   paymentSettings: PaymentGatewaySettings | null;
   aiSettings: AILLMSettings | null;
   plans: SubscriptionPlan[];
+  brandingSettings?: SiteBrandingSettings | null;
+  vipProfiles?: UserProfile[];
+  reminderLogs?: SubscriptionReminderLog[];
+  initialLeagues?: LeagueOption[];
+  initialProvider?: DataProviderType;
 }
 
 export default function AdminDashboardClient({
   predictions,
   posts,
+  dataProviderSettings,
   sportsmonksSettings,
   paymentSettings,
   aiSettings,
   plans,
+  brandingSettings,
+  vipProfiles = [],
+  reminderLogs = [],
+  initialLeagues,
+  initialProvider,
 }: AdminDashboardClientProps) {
-  const [activeTab, setActiveTab] = useState<'predictions' | 'blog' | 'api' | 'ai' | 'plans'>('predictions');
+  const [activeTab, setActiveTab] = useState<
+    'predictions' | 'blog' | 'api' | 'ai' | 'plans' | 'branding' | 'reminders'
+  >('predictions');
+
+  const pendingCount = predictions.filter((p) => p.status === 'pending').length;
 
   const tabs = [
-    { id: 'predictions', label: 'Predictions Moderation', icon: CheckSquare, badge: predictions.filter(p => p.status === 'pending').length },
+    { id: 'predictions', label: 'Predictions Moderation', icon: CheckSquare, badge: pendingCount },
     { id: 'blog', label: 'Blog Management', icon: BookOpen, badge: posts.length },
     { id: 'api', label: 'API Management', icon: Key },
     { id: 'ai', label: 'AI & LLM Management', icon: Cpu },
     { id: 'plans', label: 'Subscription Plans', icon: CreditCard, badge: plans.length },
+    { id: 'branding', label: 'Global Branding', icon: Palette },
+    { id: 'reminders', label: 'Subscription Reminders', icon: Bell, badge: vipProfiles.length },
   ] as const;
 
   return (
     <div className="space-y-6">
-      {/* 4 Distinct Tabs Navigation */}
+      {/* Dynamic Tab Navigation */}
       <div className="flex flex-wrap items-center gap-2 border-b border-[#1C2541] pb-3">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -62,9 +84,11 @@ export default function AdminDashboardClient({
               <Icon className="h-4 w-4" />
               <span>{tab.label}</span>
               {'badge' in tab && tab.badge !== undefined && tab.badge > 0 && (
-                <span className={`rounded-full px-1.5 py-0.2 text-[10px] font-black ${
-                  isActive ? 'bg-[#0B132B] text-[#48CAE4]' : 'bg-[#1C2541] text-amber-400'
-                }`}>
+                <span
+                  className={`rounded-full px-1.5 py-0.2 text-[10px] font-black ${
+                    isActive ? 'bg-[#0B132B] text-[#48CAE4]' : 'bg-[#1C2541] text-amber-400'
+                  }`}
+                >
                   {tab.badge}
                 </span>
               )}
@@ -75,11 +99,27 @@ export default function AdminDashboardClient({
 
       {/* Tab Panels */}
       <div>
-        {activeTab === 'predictions' && <PredictionsTab predictions={predictions} />}
+        {activeTab === 'predictions' && (
+          <PredictionsTab
+            predictions={predictions}
+            initialLeagues={initialLeagues}
+            initialProvider={initialProvider}
+          />
+        )}
         {activeTab === 'blog' && <BlogTab posts={posts} />}
-        {activeTab === 'api' && <ApiTab sportsmonksSettings={sportsmonksSettings} paymentSettings={paymentSettings} />}
+        {activeTab === 'api' && (
+          <ApiTab
+            dataProviderSettings={dataProviderSettings}
+            sportsmonksSettings={sportsmonksSettings}
+            paymentSettings={paymentSettings}
+          />
+        )}
         {activeTab === 'ai' && <AiTab initialSettings={aiSettings} />}
         {activeTab === 'plans' && <PlansTab plans={plans} />}
+        {activeTab === 'branding' && <BrandingTab initialSettings={brandingSettings} />}
+        {activeTab === 'reminders' && (
+          <RemindersTab vipProfiles={vipProfiles} reminderLogs={reminderLogs} />
+        )}
       </div>
     </div>
   );
