@@ -137,7 +137,8 @@ export interface FormMatch {
   is_home: boolean;
   score: string;
   result: 'W' | 'D' | 'L';
-  xg: number;
+  xg?: number;
+  league?: string;
   date: string;
 }
 

@@ -1,113 +1,473 @@
-import { Prediction, MatchAnalytics, FormMatch, PlayerInjury, MatchStatMetric } from './types';
+import {
+  Prediction,
+  MatchAnalytics,
+  FormMatch,
+  PlayerInjury,
+  MatchStatMetric,
+} from './types';
+
+const SPORTSMONKS_BASE_URL = 'https://api.sportmonks.com/v3/football';
 
 /**
- * Generates deterministic, high-fidelity quantitative analytics, form records,
- * H2H metrics, injury feeds, and xG trend data for any prediction.
+ * Determines whether a fixture or league is an international/national team context.
+ */
+export function isNationalContext(league?: string, country?: string): boolean {
+  const text = `${league || ''} ${country || ''}`.toLowerCase();
+  return (
+    text.includes('nation') ||
+    text.includes('international') ||
+    text.includes('euro') ||
+    text.includes('world cup') ||
+    text.includes('copa') ||
+    text.includes('afcon') ||
+    text.includes('friendly') ||
+    text.includes('friendlies') ||
+    text.includes('qualifier') ||
+    text.includes('fifa')
+  );
+}
+
+/**
+ * Clean empty analytics payload.
+ * Strictly free of any hardcoded mock matches or dummy arrays.
+ */
+export function getEmptyAnalytics(): MatchAnalytics {
+  return {
+    home_form: [],
+    away_form: [],
+    h2h_matches: [],
+    h2h_summary: {
+      home_wins: 0,
+      draws: 0,
+      away_wins: 0,
+      total_goals: 0,
+    },
+    injuries: [],
+    stats: [],
+    xg_trends: [],
+  };
+}
+
+/**
+ * Synchronous resolver fallback.
+ * Strictly returns an empty structure with NO fake matches, NO dummy clubs,
+ * and NO fabricated statistics.
  */
 export function getMatchAnalytics(prediction: Prediction): MatchAnalytics {
-  const home = prediction.home_team;
-  const away = prediction.away_team;
-  const hash = Math.abs(
-    home.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) * 17 +
-    away.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) * 31
-  );
+  return getEmptyAnalytics();
+}
 
-  // Deterministic form generation
-  const opponentsHome = ['Newcastle', 'Aston Villa', 'Brighton', 'West Ham', 'Wolves', 'Everton', 'Fulham', 'Brentford'];
-  const opponentsAway = ['Sevilla', 'Villarreal', 'Real Sociedad', 'Athletic Club', 'Betis', 'Getafe', 'Osasuna', 'Celta Vigo'];
+/**
+ * Queries Sportsmonks API to resolve a team's exact numeric ID by name.
+ * Used when fixtures originate from The Odds API which does not supply provider team IDs.
+ */
+export async function fetchTeamIdByName(
+  teamName: string,
+  apiKey: string
+): Promise<number | null> {
+  if (!teamName || !apiKey || apiKey === 'your_sportsmonks_api_key_here') {
+    return null;
+  }
 
-  const homeForm: FormMatch[] = [
-    { opponent: opponentsHome[hash % opponentsHome.length], is_home: true, score: '2-1', result: 'W', xg: 2.14, date: '5 days ago' },
-    { opponent: opponentsHome[(hash + 1) % opponentsHome.length], is_home: false, score: '1-1', result: 'D', xg: 1.45, date: '9 days ago' },
-    { opponent: opponentsHome[(hash + 2) % opponentsHome.length], is_home: true, score: '3-0', result: 'W', xg: 2.85, date: '14 days ago' },
-    { opponent: opponentsHome[(hash + 3) % opponentsHome.length], is_home: false, score: '0-1', result: 'L', xg: 0.92, date: '19 days ago' },
-    { opponent: opponentsHome[(hash + 4) % opponentsHome.length], is_home: true, score: '2-0', result: 'W', xg: 1.88, date: '24 days ago' },
-  ];
+  // Strip club acronyms for search fallback: "Arsenal FC" -> "Arsenal"
+  const cleanName = teamName.replace(/\b(FC|CF|SC|AFC|FK|BSC)\b/gi, '').trim();
+  const queries = [teamName.trim()];
+  if (cleanName && cleanName !== teamName.trim()) {
+    queries.push(cleanName);
+  }
 
-  const awayForm: FormMatch[] = [
-    { opponent: opponentsAway[hash % opponentsAway.length], is_home: false, score: '1-2', result: 'L', xg: 1.15, date: '4 days ago' },
-    { opponent: opponentsAway[(hash + 1) % opponentsAway.length], is_home: true, score: '2-2', result: 'D', xg: 1.78, date: '8 days ago' },
-    { opponent: opponentsAway[(hash + 2) % opponentsAway.length], is_home: false, score: '0-2', result: 'L', xg: 0.81, date: '13 days ago' },
-    { opponent: opponentsAway[(hash + 3) % opponentsAway.length], is_home: true, score: '1-0', result: 'W', xg: 1.40, date: '18 days ago' },
-    { opponent: opponentsAway[(hash + 4) % opponentsAway.length], is_home: false, score: '1-1', result: 'D', xg: 1.25, date: '23 days ago' },
-  ];
+  for (const q of queries) {
+    try {
+      const url = `${SPORTSMONKS_BASE_URL}/teams/search/${encodeURIComponent(q)}?api_token=${apiKey}`;
+      const res = await fetch(url, {
+        headers: { Accept: 'application/json' },
+        next: { revalidate: 3600 },
+      });
 
-  // Head-to-head recent meetings
-  const h2hMatches = [
-    { date: 'Last Season (H)', home_score: 2, away_score: 1, winner: 'home' as const },
-    { date: 'Last Season (A)', home_score: 1, away_score: 1, winner: 'draw' as const },
-    { date: '2024 Cup', home_score: 3, away_score: 0, winner: 'home' as const },
-    { date: '2023 League (H)', home_score: 1, away_score: 2, winner: 'away' as const },
-    { date: '2023 League (A)', home_score: 2, away_score: 2, winner: 'draw' as const },
-  ];
+      if (!res.ok) continue;
 
-  const homeWins = h2hMatches.filter((m) => m.winner === 'home').length;
-  const awayWins = h2hMatches.filter((m) => m.winner === 'away').length;
-  const draws = h2hMatches.filter((m) => m.winner === 'draw').length;
+      const json = await res.json();
+      if (Array.isArray(json.data) && json.data.length > 0) {
+        // Exact name match priority
+        const exact = json.data.find(
+          (t: any) => t.name?.toLowerCase() === q.toLowerCase()
+        );
+        if (exact) return exact.id;
 
-  // Realistic injury roster
-  const sampleInjuries: PlayerInjury[] = [
+        // Starts with query match
+        const startsWith = json.data.find((t: any) =>
+          t.name?.toLowerCase().startsWith(q.toLowerCase())
+        );
+        if (startsWith) return startsWith.id;
+
+        return json.data[0].id;
+      }
+    } catch (err) {
+      console.warn(`[Sportsmonks] Team search error for "${q}":`, err);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Queries past fixtures using the exact, validated team_id from Sportsmonks.
+ * Performs rigorous data integrity validation:
+ * - Opponents must be real match participants (never static mock arrays).
+ * - Matches must have matching league context (national matches for national teams, club matches for clubs).
+ * - Returns an empty array if data is missing or unsupported.
+ */
+export async function fetchTeamForm(
+  teamId: number | null,
+  teamName: string,
+  apiKey?: string,
+  isNational = false
+): Promise<FormMatch[]> {
+  if (!teamId || !apiKey || apiKey === 'your_sportsmonks_api_key_here') {
+    return [];
+  }
+
+  try {
+    const url = `${SPORTSMONKS_BASE_URL}/teams/${teamId}?api_token=${apiKey}&include=latest.league;latest.participants;latest.scores`;
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      next: { revalidate: 300 },
+    });
+
+    if (!res.ok) {
+      return [];
+    }
+
+    const json = await res.json();
+    const latestList = json.data?.latest;
+    if (!Array.isArray(latestList) || latestList.length === 0) {
+      return [];
+    }
+
+    const form: FormMatch[] = [];
+
+    for (const match of latestList) {
+      const participants = match.participants || [];
+      const teamPart = participants.find(
+        (p: any) =>
+          p.id === teamId ||
+          p.name?.toLowerCase() === teamName.toLowerCase()
+      );
+      const oppPart = participants.find(
+        (p: any) =>
+          p.id !== teamId &&
+          p.name?.toLowerCase() !== teamName.toLowerCase()
+      );
+
+      // Require a verified second participant (the opponent)
+      if (!oppPart) continue;
+
+      const leagueName = match.league?.name || '';
+      const leagueSubType = match.league?.sub_type || '';
+      const isMatchNational =
+        leagueSubType === 'international' || isNationalContext(leagueName);
+
+      // DATA INTEGRITY CHECK: Strict league context matching
+      // Discard club matches if querying for a national team and vice-versa
+      if (isNational && !isMatchNational) {
+        continue;
+      }
+      if (!isNational && isMatchNational) {
+        continue;
+      }
+
+      const isHome = teamPart?.meta?.location === 'home';
+      const scores = match.scores || [];
+      const currentScores = scores.filter(
+        (s: any) => s.description === 'CURRENT'
+      );
+
+      let teamGoals = 0;
+      let oppGoals = 0;
+
+      if (currentScores.length >= 2) {
+        const teamScoreObj = currentScores.find(
+          (s: any) => s.participant_id === teamId
+        );
+        const oppScoreObj = currentScores.find(
+          (s: any) => s.participant_id === oppPart.id
+        );
+
+        teamGoals = teamScoreObj?.score?.goals ?? 0;
+        oppGoals = oppScoreObj?.score?.goals ?? 0;
+      } else {
+        continue;
+      }
+
+      let result: 'W' | 'D' | 'L' = 'D';
+      if (teamGoals > oppGoals) result = 'W';
+      else if (teamGoals < oppGoals) result = 'L';
+
+      form.push({
+        opponent: oppPart.name,
+        is_home: isHome,
+        score: isHome ? `${teamGoals}-${oppGoals}` : `${oppGoals}-${teamGoals}`,
+        result,
+        date: match.starting_at ? match.starting_at.split(' ')[0] : 'Recent',
+        league: leagueName || (isNational ? 'International' : 'Domestic League'),
+      });
+
+      if (form.length >= 5) break;
+    }
+
+    return form;
+  } catch (err) {
+    console.error(`[Sportsmonks] Failed to fetch team form for ${teamName} (${teamId}):`, err);
+    return [];
+  }
+}
+
+/**
+ * Fetches verified head-to-head fixtures between two teams via Sportsmonks.
+ * Returns empty records if unsupported or unavailable.
+ */
+export async function fetchH2H(
+  homeId: number | null,
+  awayId: number | null,
+  apiKey?: string
+): Promise<{
+  h2h_matches: {
+    date: string;
+    home_score: number;
+    away_score: number;
+    winner: 'home' | 'away' | 'draw';
+  }[];
+  h2h_summary: {
+    home_wins: number;
+    draws: number;
+    away_wins: number;
+    total_goals: number;
+  };
+}> {
+  const empty = {
+    h2h_matches: [],
+    h2h_summary: { home_wins: 0, draws: 0, away_wins: 0, total_goals: 0 },
+  };
+
+  if (!homeId || !awayId || !apiKey || apiKey === 'your_sportsmonks_api_key_here') {
+    return empty;
+  }
+
+  try {
+    const url = `${SPORTSMONKS_BASE_URL}/fixtures/head-to-head/${homeId}/${awayId}?api_token=${apiKey}&include=league;participants;scores`;
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      next: { revalidate: 300 },
+    });
+
+    if (!res.ok) return empty;
+
+    const json = await res.json();
+    const list = json.data;
+    if (!Array.isArray(list) || list.length === 0) return empty;
+
+    const matches: {
+      date: string;
+      home_score: number;
+      away_score: number;
+      winner: 'home' | 'away' | 'draw';
+    }[] = [];
+
+    let totalGoals = 0;
+
+    for (const match of list.slice(0, 5)) {
+      const currentScores = (match.scores || []).filter(
+        (s: any) => s.description === 'CURRENT'
+      );
+      if (currentScores.length < 2) continue;
+
+      const homeS = currentScores.find((s: any) => s.participant_id === homeId);
+      const awayS = currentScores.find((s: any) => s.participant_id === awayId);
+
+      const hGoals = homeS?.score?.goals ?? 0;
+      const aGoals = awayS?.score?.goals ?? 0;
+      totalGoals += hGoals + aGoals;
+
+      let winner: 'home' | 'away' | 'draw' = 'draw';
+      if (hGoals > aGoals) winner = 'home';
+      else if (aGoals > hGoals) winner = 'away';
+
+      const matchDate = match.starting_at ? match.starting_at.split(' ')[0] : 'Past';
+      const leagueName = match.league?.name ? ` (${match.league.name})` : '';
+
+      matches.push({
+        date: `${matchDate}${leagueName}`,
+        home_score: hGoals,
+        away_score: aGoals,
+        winner,
+      });
+    }
+
+    const homeWins = matches.filter((m) => m.winner === 'home').length;
+    const awayWins = matches.filter((m) => m.winner === 'away').length;
+    const draws = matches.filter((m) => m.winner === 'draw').length;
+
+    return {
+      h2h_matches: matches,
+      h2h_summary: {
+        home_wins: homeWins,
+        draws,
+        away_wins: awayWins,
+        total_goals: totalGoals,
+      },
+    };
+  } catch (err) {
+    console.error('[Sportsmonks] H2H fetch error:', err);
+    return empty;
+  }
+}
+
+/**
+ * Computes legitimate statistical metrics directly from validated recent form.
+ * Returns empty if recent fixtures are unavailable.
+ */
+export function calculateMatchStats(
+  homeForm: FormMatch[],
+  awayForm: FormMatch[]
+): MatchStatMetric[] {
+  if (!homeForm.length || !awayForm.length) {
+    return [];
+  }
+
+  let homeGoalsScored = 0;
+  let homeGoalsConceded = 0;
+  let homeCleanSheets = 0;
+  let homeWins = 0;
+
+  for (const m of homeForm) {
+    const parts = m.score.split('-').map(Number);
+    const scored = m.is_home ? parts[0] : parts[1];
+    const conceded = m.is_home ? parts[1] : parts[0];
+    if (!isNaN(scored)) homeGoalsScored += scored;
+    if (!isNaN(conceded)) {
+      homeGoalsConceded += conceded;
+      if (conceded === 0) homeCleanSheets++;
+    }
+    if (m.result === 'W') homeWins++;
+  }
+
+  let awayGoalsScored = 0;
+  let awayGoalsConceded = 0;
+  let awayCleanSheets = 0;
+  let awayWins = 0;
+
+  for (const m of awayForm) {
+    const parts = m.score.split('-').map(Number);
+    const scored = m.is_home ? parts[0] : parts[1];
+    const conceded = m.is_home ? parts[1] : parts[0];
+    if (!isNaN(scored)) awayGoalsScored += scored;
+    if (!isNaN(conceded)) {
+      awayGoalsConceded += conceded;
+      if (conceded === 0) awayCleanSheets++;
+    }
+    if (m.result === 'W') awayWins++;
+  }
+
+  const hLen = homeForm.length;
+  const aLen = awayForm.length;
+
+  return [
     {
-      player: `${home.split(' ')[0]} Striker (Starter)`,
-      team: home,
-      position: 'Forward',
-      status: (hash % 2 === 0 ? 'Out' : 'Doubtful'),
-      reason: 'Hamstring muscle strain (7-10 days)',
+      label: 'Avg Goals Scored / Match',
+      homeValue: Number((homeGoalsScored / hLen).toFixed(2)),
+      awayValue: Number((awayGoalsScored / aLen).toFixed(2)),
     },
     {
-      player: `${home.split(' ')[0]} Midfield Anchor`,
-      team: home,
-      position: 'Midfielder',
-      status: 'Out',
-      reason: 'Ankle ligament sprain',
+      label: 'Avg Goals Conceded / Match',
+      homeValue: Number((homeGoalsConceded / hLen).toFixed(2)),
+      awayValue: Number((awayGoalsConceded / aLen).toFixed(2)),
     },
     {
-      player: `${away.split(' ')[0]} Centre-Back`,
-      team: away,
-      position: 'Defender',
-      status: (hash % 3 === 0 ? 'Suspended' : 'Out'),
-      reason: 'Accumulated yellow card threshold',
+      label: 'Win Rate (Last 5)',
+      homeValue: Math.round((homeWins / hLen) * 100),
+      awayValue: Math.round((awayWins / aLen) * 100),
+      unit: '%',
     },
     {
-      player: `${away.split(' ')[0]} First-Choice Goalkeeper`,
-      team: away,
-      position: 'Goalkeeper',
-      status: 'Doubtful',
-      reason: 'Late fitness test (Groin discomfort)',
+      label: 'Clean Sheet Rate',
+      homeValue: Math.round((homeCleanSheets / hLen) * 100),
+      awayValue: Math.round((awayCleanSheets / aLen) * 100),
+      unit: '%',
     },
   ];
+}
 
-  // Performance comparison metrics
-  const stats: MatchStatMetric[] = [
-    { label: 'Average Possession', homeValue: 56.4 + (hash % 6), awayValue: 43.6 - (hash % 6), unit: '%' },
-    { label: 'Expected Goals (xG) / 90', homeValue: Number((1.82 + (hash % 5) * 0.1).toFixed(2)), awayValue: Number((1.24 + ((hash + 2) % 4) * 0.1).toFixed(2)) },
-    { label: 'Shots on Target / Match', homeValue: 6.2, awayValue: 4.1 },
-    { label: 'Clean Sheet Rate', homeValue: 45, awayValue: 30, unit: '%' },
-    { label: 'Dangerous Attacks / 90', homeValue: 68, awayValue: 49 },
-    { label: 'Shot Conversion Rate', homeValue: 14.8, awayValue: 11.2, unit: '%' },
-  ];
+/**
+ * Asynchronously resolves live VIP match telemetry and form records.
+ * Queries verified provider endpoints and strictly refuses to inject fake club
+ * data or fabricated matches when live records are unavailable.
+ */
+export async function fetchMatchAnalytics(
+  prediction: Prediction,
+  customApiKey?: string
+): Promise<MatchAnalytics> {
+  const apiKey =
+    customApiKey?.trim() ||
+    process.env.SPORTSMONKS_API_KEY?.trim();
 
-  // xG trend data for Recharts area graph
-  const xgTrends = [
-    { match_num: 'Match 1', home_xg: 1.88, away_xg: 1.25 },
-    { match_num: 'Match 2', home_xg: 0.92, away_xg: 1.40 },
-    { match_num: 'Match 3', home_xg: 2.85, away_xg: 0.81 },
-    { match_num: 'Match 4', home_xg: 1.45, away_xg: 1.78 },
-    { match_num: 'Match 5', home_xg: 2.14, away_xg: 1.15 },
-  ];
+  if (!apiKey || apiKey === 'your_sportsmonks_api_key_here') {
+    return getEmptyAnalytics();
+  }
+
+  const isNational = isNationalContext(prediction.league, prediction.country);
+  let homeTeamId: number | null = null;
+  let awayTeamId: number | null = null;
+
+  // 1. If fixture_id is numeric (Sportsmonks fixture ID), fetch exact participant IDs
+  if (prediction.fixture_id && /^\d+$/.test(prediction.fixture_id)) {
+    try {
+      const url = `${SPORTSMONKS_BASE_URL}/fixtures/${prediction.fixture_id}?api_token=${apiKey}&include=participants`;
+      const res = await fetch(url, {
+        headers: { Accept: 'application/json' },
+        next: { revalidate: 300 },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const participants = json.data?.participants || [];
+        const homePart =
+          participants.find((p: any) => p.meta?.location === 'home') ||
+          participants[0];
+        const awayPart =
+          participants.find((p: any) => p.meta?.location === 'away') ||
+          participants[1];
+        if (homePart?.id) homeTeamId = homePart.id;
+        if (awayPart?.id) awayTeamId = awayPart.id;
+      }
+    } catch (err) {
+      console.warn('[Sportsmonks] Failed to resolve fixture participants:', err);
+    }
+  }
+
+  // 2. Fallback to exact team-name lookup against Sportsmonks (e.g. for The Odds API fixtures)
+  if (!homeTeamId) {
+    homeTeamId = await fetchTeamIdByName(prediction.home_team, apiKey);
+  }
+  if (!awayTeamId) {
+    awayTeamId = await fetchTeamIdByName(prediction.away_team, apiKey);
+  }
+
+  // 3. Fetch past fixtures for Home and Away using exact validated team IDs
+  const [homeForm, awayForm, h2hData] = await Promise.all([
+    fetchTeamForm(homeTeamId, prediction.home_team, apiKey, isNational),
+    fetchTeamForm(awayTeamId, prediction.away_team, apiKey, isNational),
+    fetchH2H(homeTeamId, awayTeamId, apiKey),
+  ]);
+
+  // 4. Calculate legitimate statistics from the retrieved form
+  const stats = calculateMatchStats(homeForm, awayForm);
 
   return {
     home_form: homeForm,
     away_form: awayForm,
-    h2h_matches: h2hMatches,
-    h2h_summary: {
-      home_wins: homeWins,
-      draws: draws,
-      away_wins: awayWins,
-      total_goals: 15,
-    },
-    injuries: sampleInjuries,
-    stats: stats,
-    xg_trends: xgTrends,
+    h2h_matches: h2hData.h2h_matches,
+    h2h_summary: h2hData.h2h_summary,
+    injuries: [], // Verified provider injury feed only; no fake mock players
+    stats,
+    xg_trends: [], // No fake xG curves; only populated when historical xG telemetry is recorded
   };
 }
