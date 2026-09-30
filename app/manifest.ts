@@ -2,14 +2,14 @@ import { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'SabiPredict AI - Quantitative Football Intelligence',
+    name: 'SabiPredict AI',
     short_name: 'SabiPredict',
-    description:
-      'Sportsmonks v3 telemetry, Poisson expected goals (xG), and positive Expected Value (+EV) sports predictions.',
-    start_url: '/',
+    description: 'AI-Powered Football Predictions & Sports Insights',
+    start_url: '/predictions',
+    scope: '/',
     display: 'standalone',
-    background_color: '#0B132B',
-    theme_color: '#0B132B',
+    background_color: '#090d16',
+    theme_color: '#090d16',
     orientation: 'portrait-primary',
     icons: [
       {

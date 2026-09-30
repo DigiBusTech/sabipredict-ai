@@ -31,6 +31,36 @@ body {
   background: #3A506B;
 }
 
+/* Prevent rogue white backgrounds on autofilled dark inputs */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #1e293b inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Custom Scrollbar with smooth mobile touch scrolling */
+.custom-scrollbar {
+  -webkit-overflow-scrolling: touch;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #06b6d4;
+}
+
 /* Sports Telemetry HUD Animations */
 @keyframes radar-sweep {
   0% {

@@ -26,58 +26,64 @@ export default function PredictionCard({
   const ev = (((prediction.confidence_score - 10) / 100) * prediction.odds - 1) * 100;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#1C2541] bg-[#111C38] shadow-lg transition-all hover:border-[#223156]">
-      {/* Card Header */}
-      <div className="flex items-center justify-between border-b border-[#1C2541] px-4 py-2.5 bg-[#0B132B]/80 text-xs">
+    <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 sm:p-5 mb-4 shadow-lg transition-all hover:border-slate-700">
+      {/* Card Header: League + Kickoff on left; Outcome + Tier on right */}
+      <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3 text-xs">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-[#48CAE4]">{prediction.league}</span>
-          <span className="text-slate-400 font-mono flex items-center gap-1">
+          <span className="font-black text-cyan-400 text-xs sm:text-sm">{prediction.league}</span>
+          <span className="text-slate-400 font-mono text-[11px] sm:text-xs flex items-center gap-1">
             <Clock className="h-3 w-3" /> {kickoff}
           </span>
         </div>
 
         <div className="flex items-center gap-1.5">
           {prediction.prediction_outcome === 'Won' && (
-            <span className="flex items-center gap-1 rounded bg-emerald-500/20 px-2 py-0.5 text-[11px] font-black text-emerald-400 border border-emerald-500/40">
+            <span className="flex items-center gap-1 rounded-md bg-emerald-500/20 px-2 py-0.5 text-[11px] font-black text-emerald-400 border border-emerald-500/40">
               <CheckCircle2 className="h-3.5 w-3.5" /> WON
             </span>
           )}
           {prediction.prediction_outcome === 'Lost' && (
-            <span className="flex items-center gap-1 rounded bg-rose-500/20 px-2 py-0.5 text-[11px] font-black text-rose-400 border border-rose-500/40">
+            <span className="flex items-center gap-1 rounded-md bg-rose-500/20 px-2 py-0.5 text-[11px] font-black text-rose-400 border border-rose-500/40">
               <XCircle className="h-3.5 w-3.5" /> LOST
             </span>
           )}
           {prediction.prediction_outcome === 'Pending' && (
-            <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+            <span className="rounded-md bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-500/30">
               PENDING
             </span>
           )}
           {prediction.tier === 'vip' ? (
-            <span className="flex items-center gap-1 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-500/40">
+            <span className="flex items-center gap-1 rounded-md bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-500/40">
               <Sparkles className="h-3 w-3" /> VIP
             </span>
           ) : (
-            <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400">
+            <span className="rounded-md bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 border border-slate-700">
               FREE
             </span>
           )}
         </div>
       </div>
 
-      {/* Match Teams & Scores */}
-      <div className="p-4 space-y-3">
-        <div className="grid grid-cols-7 items-center gap-2 my-1">
-          <div className="col-span-3 font-bold text-sm text-white line-clamp-1">{prediction.home_team}</div>
-          <div className="col-span-1 text-center">
+      {/* Match Teams & Centered Scores Pill */}
+      <div className="space-y-3">
+        <div className="grid grid-cols-7 items-center gap-2 my-2">
+          <div className="col-span-3 font-bold text-sm sm:text-base text-white text-left truncate" title={prediction.home_team}>
+            {prediction.home_team}
+          </div>
+          <div className="col-span-1 flex justify-center">
             {hasScore ? (
-              <span className="rounded bg-[#0B132B] px-2 py-0.5 font-mono font-black text-sm text-white border border-[#223156]">
+              <span className="bg-slate-950 px-3 py-1 rounded-lg font-bold text-lg font-mono text-white border border-slate-800 shadow-inner">
                 {prediction.home_score} - {prediction.away_score}
               </span>
             ) : (
-              <span className="text-xs font-bold text-slate-500">VS</span>
+              <span className="bg-slate-950 px-3 py-1 rounded-lg font-bold text-xs sm:text-sm text-slate-400 border border-slate-800">
+                VS
+              </span>
             )}
           </div>
-          <div className="col-span-3 text-right font-bold text-sm text-white line-clamp-1">{prediction.away_team}</div>
+          <div className="col-span-3 font-bold text-sm sm:text-base text-white text-right truncate" title={prediction.away_team}>
+            {prediction.away_team}
+          </div>
         </div>
 
         {/* Core Prediction Box */}
@@ -92,16 +98,21 @@ export default function PredictionCard({
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between rounded-xl bg-[#0B132B] p-2.5 border border-[#1C2541]">
+            {/* High-Contrast AI Prediction Market Container */}
+            <div className="bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded-xl p-3 flex justify-between items-center">
               <div>
-                <span className="text-[10px] uppercase font-semibold text-slate-400 block">AI Market</span>
-                <span className="text-sm font-extrabold text-[#48CAE4]">{prediction.market}</span>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
+                  AI Market
+                </span>
+                <span className="text-sm sm:text-base font-black text-cyan-400">
+                  {prediction.market}
+                </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="rounded bg-[#1C2541] px-2 py-0.5 text-sm font-extrabold text-white border border-[#223156]">
+                <span className="rounded-lg bg-slate-800 px-2.5 py-1 text-sm font-extrabold text-white border border-slate-700">
                   @{Number(prediction.odds).toFixed(2)}
                 </span>
-                <span className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span className="rounded-md px-1.5 py-0.5 text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   {ev > 0 ? `+${ev.toFixed(1)}% EV` : `${ev.toFixed(1)}% EV`}
                 </span>
               </div>
@@ -112,24 +123,24 @@ export default function PredictionCard({
                 <span className="text-slate-400">Model Probability</span>
                 <span className="font-bold text-white">{prediction.confidence_score}%</span>
               </div>
-              <div className="h-1.5 w-full rounded-full bg-[#1C2541] overflow-hidden">
-                <div className="h-full bg-linear-to-r from-[#48CAE4] to-[#0077B6]" style={{ width: `${prediction.confidence_score}%` }} />
+              <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
+                <div className="h-full bg-linear-to-r from-cyan-500 to-cyan-400" style={{ width: `${prediction.confidence_score}%` }} />
               </div>
             </div>
 
             {/* AI Tactical Analysis Accordion */}
-            <div className="pt-2 border-t border-[#1C2541]">
+            <div className="pt-2 border-t border-slate-800">
               <button 
                 onClick={() => setOpenAnalysis(!openAnalysis)} 
-                className="flex w-full items-center justify-between text-xs font-semibold text-slate-300 hover:text-[#48CAE4] transition"
+                className="flex w-full items-center justify-between text-xs font-semibold text-slate-300 hover:text-cyan-400 transition-colors py-1 cursor-pointer"
               >
-                <span className="flex items-center gap-1">
-                  <BrainCircuit className="h-3.5 w-3.5 text-[#48CAE4]" /> AI Tactical Rationale
+                <span className="flex items-center gap-1.5">
+                  <BrainCircuit className="h-4 w-4 text-cyan-400" /> AI Tactical Rationale
                 </span>
                 {openAnalysis ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
               </button>
               {openAnalysis && (
-                <div className="mt-2 rounded-xl bg-[#0B132B] p-2.5 text-xs text-slate-300 border border-[#1C2541] leading-relaxed animate-in fade-in">
+                <div className="mt-2 rounded-xl bg-slate-950/70 p-3 text-xs text-slate-300 border border-slate-800 leading-relaxed animate-in fade-in">
                   {prediction.ai_analysis}
                 </div>
               )}
@@ -138,20 +149,20 @@ export default function PredictionCard({
         )}
 
         {/* Extended VIP Match Analytics Accordion Button */}
-        <div className="pt-2 border-t border-[#1C2541]">
+        <div className="pt-2 border-t border-slate-800">
           <button
             onClick={() => setOpenAnalytics(!openAnalytics)}
-            className={`flex w-full items-center justify-between rounded-xl p-2 text-xs font-bold transition ${
+            className={`flex w-full items-center justify-between rounded-xl p-2.5 text-xs font-bold transition-all cursor-pointer ${
               openAnalytics
-                ? 'bg-[#1C2541] text-amber-300 border border-amber-500/30'
-                : 'bg-[#0B132B] text-slate-300 hover:text-white border border-[#223156]'
+                ? 'bg-slate-800 text-amber-300 border border-amber-500/40 shadow-sm'
+                : 'bg-slate-950/60 text-slate-300 hover:text-white border border-slate-800'
             }`}
           >
             <span className="flex items-center gap-1.5">
               <BarChart2 className="h-4 w-4 text-amber-400" />
               <span>Match Analytics, Form & Telemetry</span>
               {!isVipMember && (
-                <span className="rounded bg-amber-500/20 px-1.5 py-0.2 text-[9px] font-black text-amber-300 border border-amber-500/40">
+                <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-black text-amber-300 border border-amber-500/40">
                   VIP
                 </span>
               )}

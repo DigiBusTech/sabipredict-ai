@@ -30,12 +30,21 @@ export async function signInAction(formData: FormData) {
 }
 
 export async function signUpAction(formData: FormData) {
-  const email = formData.get('email') as string;
+  const email = (formData.get('email') as string)?.trim();
   const password = formData.get('password') as string;
-  const fullName = formData.get('fullName') as string;
+  const confirmPassword = formData.get('confirmPassword') as string;
+  const fullName = (formData.get('fullName') as string)?.trim();
 
   if (!email || !password) {
     return { error: 'Email and password are required.' };
+  }
+
+  if (password.length < 6) {
+    return { error: 'Password must be at least 6 characters long.' };
+  }
+
+  if (confirmPassword !== undefined && confirmPassword !== null && password !== confirmPassword) {
+    return { error: 'Passwords do not match. Please ensure both passwords match.' };
   }
 
   const supabase = await createClient();

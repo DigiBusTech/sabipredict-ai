@@ -232,17 +232,17 @@ export default function PricingClient({
 
       {/* Manual Payment Checkout Modal */}
       {checkoutModalOpen && selectedPlan && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B132B]/85 backdrop-blur-md p-4">
-          <div className="w-full max-w-lg rounded-3xl border border-amber-500/40 bg-[#111C38] p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-4">
+          <div className="max-h-[90vh] overflow-y-auto custom-scrollbar w-full max-w-xl mx-auto rounded-2xl bg-slate-900 border border-slate-800 p-4 sm:p-6 shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-150">
             {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-[#1C2541] pb-4">
+            <div className="flex items-start justify-between border-b border-slate-800 pb-3 mb-4 sticky top-0 bg-slate-900/95 backdrop-blur-md z-10">
               <div className="space-y-1">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-300">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-cyan-400">
                   <Crown className="h-3 w-3" /> VIP Lounge Membership
                 </div>
                 <h3 className="text-lg font-black text-white">{selectedPlan.name}</h3>
                 <div className="flex items-baseline gap-1.5 text-xs text-slate-300">
-                  <span className="text-2xl font-black text-amber-400">
+                  <span className="text-2xl font-black text-cyan-400">
                     ${Number(selectedPlan.price).toFixed(2)}
                   </span>
                   <span>/ {selectedPlan.interval}</span>
@@ -251,7 +251,7 @@ export default function PricingClient({
 
               <button
                 onClick={() => setCheckoutModalOpen(false)}
-                className="rounded-xl border border-[#223156] bg-[#0B132B] p-2 text-slate-400 hover:text-white"
+                className="rounded-xl border border-slate-800 bg-slate-950 p-2 text-slate-400 hover:text-white transition-colors cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -296,12 +296,12 @@ export default function PricingClient({
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Method Selector Tabs */}
+                {/* Responsive Payment Method Selector */}
                 <div>
                   <label className="text-xs font-bold text-slate-300 block mb-2">
                     1. Select Payment Method
                   </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
                     {initialManualMethods.map((m) => {
                       const isSelected = selectedMethod?.id === m.id;
                       return (
@@ -309,14 +309,14 @@ export default function PricingClient({
                           key={m.id}
                           type="button"
                           onClick={() => setSelectedMethod(m)}
-                          className={`rounded-xl p-2.5 text-left border transition-all ${
+                          className={`rounded-xl p-3 text-left border transition-all cursor-pointer ${
                             isSelected
-                              ? 'border-[#48CAE4] bg-[#48CAE4]/10 text-white shadow-md'
-                              : 'border-[#223156] bg-[#0B132B] text-slate-400 hover:border-slate-500 hover:text-slate-200'
+                              ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400 shadow-lg shadow-cyan-500/10'
+                              : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700 hover:text-slate-200'
                           }`}
                         >
                           <div className="flex items-center gap-1.5 mb-1">
-                            <Wallet className={`h-3.5 w-3.5 ${isSelected ? 'text-[#48CAE4]' : 'text-slate-400'}`} />
+                            <Wallet className={`h-3.5 w-3.5 ${isSelected ? 'text-cyan-400' : 'text-slate-400'}`} />
                             <span className="text-xs font-bold truncate">{m.method_name}</span>
                           </div>
                           <span className="text-[10px] text-slate-400 line-clamp-1">{m.account_details}</span>
@@ -328,15 +328,15 @@ export default function PricingClient({
 
                 {/* Selected Method Details */}
                 {selectedMethod && (
-                  <div className="rounded-2xl bg-[#0B132B] p-4 border border-[#223156] space-y-3">
+                  <div className="rounded-xl bg-slate-950/70 p-4 border border-slate-800 space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-400">
                         {selectedMethod.method_name} Details
                       </span>
                       <button
                         type="button"
                         onClick={() => handleCopyAccountDetails(selectedMethod.account_details)}
-                        className="inline-flex items-center gap-1 rounded-lg bg-[#111C38] border border-[#223156] px-2.5 py-1 text-[11px] font-bold text-slate-300 hover:text-white"
+                        className="inline-flex items-center gap-1 rounded-lg bg-slate-800 border border-slate-700 px-2.5 py-1 text-[11px] font-bold text-slate-300 hover:text-white transition-colors cursor-pointer"
                       >
                         {copied ? (
                           <>
@@ -352,12 +352,12 @@ export default function PricingClient({
                       </button>
                     </div>
 
-                    <div className="font-mono text-xs font-bold text-white bg-[#111C38] p-3 rounded-xl border border-[#1C2541] whitespace-pre-wrap select-all break-all">
+                    <div className="font-mono text-xs font-bold text-white bg-slate-900 p-3 rounded-lg border border-slate-800 whitespace-pre-wrap select-all break-all">
                       {selectedMethod.account_details}
                     </div>
 
                     {selectedMethod.instructions && (
-                      <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-2.5 text-[11px] text-amber-200/90 leading-relaxed">
+                      <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2.5 text-[11px] text-amber-200/90 leading-relaxed">
                         {selectedMethod.instructions}
                       </div>
                     )}
@@ -365,12 +365,12 @@ export default function PricingClient({
                 )}
 
                 {/* Proof of Payment Form */}
-                <form onSubmit={handleSubmitProof} className="space-y-3 pt-1">
-                  {/* File Upload Area */}
+                <form onSubmit={handleSubmitProof} className="space-y-4 pt-1">
+                  {/* Mobile File Upload Area */}
                   <div>
                     <label className="text-xs font-bold text-white flex items-center justify-between mb-1.5">
                       <span className="flex items-center gap-1.5">
-                        <UploadCloud className="h-4 w-4 text-amber-400" />
+                        <UploadCloud className="h-4 w-4 text-cyan-400" />
                         <span>2. Upload Payment Receipt / Proof</span>
                         {selectedMethod?.require_file_proof !== false && (
                           <span className="text-amber-400 font-black">*</span>
@@ -393,10 +393,10 @@ export default function PricingClient({
                             handleFileChange(e.dataTransfer.files[0]);
                           }
                         }}
-                        className={`relative rounded-2xl border-2 border-dashed p-4 text-center transition cursor-pointer ${
+                        className={`relative rounded-xl border-2 border-dashed p-4 text-center cursor-pointer transition-colors ${
                           isDragging
-                            ? 'border-[#48CAE4] bg-[#48CAE4]/10'
-                            : 'border-[#223156] bg-[#0B132B]/80 hover:border-slate-500'
+                            ? 'border-cyan-500 bg-cyan-500/10'
+                            : 'border-slate-700 hover:border-cyan-500 bg-slate-950/50'
                         }`}
                       >
                         <input
@@ -412,7 +412,7 @@ export default function PricingClient({
                         <div className="space-y-1 pointer-events-none">
                           <UploadCloud className="h-6 w-6 text-slate-400 mx-auto" />
                           <p className="text-xs font-bold text-slate-200">
-                            Drag & drop receipt here, or <span className="text-[#48CAE4] underline">browse</span>
+                            Drag & drop receipt here, or <span className="text-cyan-400 underline">browse</span>
                           </p>
                           <p className="text-[10px] text-slate-500">
                             Screenshots, transfer receipts, or PDF documents
@@ -420,16 +420,16 @@ export default function PricingClient({
                         </div>
                       </div>
                     ) : (
-                      <div className="rounded-xl border border-[#223156] bg-[#0B132B] p-2.5 flex items-center justify-between gap-3">
+                      <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-2.5 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2.5 overflow-hidden">
                           {filePreview ? (
                             <img
                               src={filePreview}
                               alt="Receipt Preview"
-                              className="h-10 w-10 object-cover rounded-lg border border-[#3A506B] shrink-0"
+                              className="h-10 w-10 object-cover rounded-lg border border-slate-700 shrink-0"
                             />
                           ) : (
-                            <div className="h-10 w-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 text-amber-400">
+                            <div className="h-10 w-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0 text-cyan-400">
                               <FileText className="h-5 w-5" />
                             </div>
                           )}
@@ -444,7 +444,7 @@ export default function PricingClient({
                         <button
                           type="button"
                           onClick={() => handleFileChange(null)}
-                          className="rounded-lg bg-rose-500/10 border border-rose-500/20 p-1.5 text-rose-300 hover:bg-rose-500/20 shrink-0"
+                          className="rounded-lg bg-rose-500/10 border border-rose-500/20 p-1.5 text-rose-300 hover:bg-rose-500/20 shrink-0 cursor-pointer"
                           title="Remove file"
                         >
                           <Trash className="h-3.5 w-3.5" />
@@ -463,7 +463,7 @@ export default function PricingClient({
                       value={txReference}
                       onChange={(e) => setTxReference(e.target.value)}
                       placeholder="e.g. Transaction Hash (TxID) or Sender Name (Bank Transfer)"
-                      className="w-full rounded-xl bg-[#0B132B] border border-[#223156] px-3.5 py-2.5 text-xs text-white placeholder-slate-500 font-mono focus:border-amber-400 focus:outline-none"
+                      className="w-full rounded-xl bg-slate-800/90 border border-slate-700 px-3.5 py-2.5 text-xs text-white placeholder-slate-400 font-mono focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all"
                     />
                     <p className="text-[10px] text-slate-400 mt-1">
                       Paste the transaction ID or bank sender name matching your payment receipt.
@@ -477,18 +477,19 @@ export default function PricingClient({
                     </div>
                   )}
 
-                  <div className="pt-2 flex items-center justify-end gap-2">
+                  {/* Sticky Fixed Modal Footer */}
+                  <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-md pt-3 pb-1 border-t border-slate-800 z-10 flex items-center justify-end gap-2 mt-4">
                     <button
                       type="button"
                       onClick={() => setCheckoutModalOpen(false)}
-                      className="rounded-xl border border-[#223156] px-4 py-2.5 text-xs font-bold text-slate-300 hover:text-white"
+                      className="rounded-xl border border-slate-700 px-4 py-2.5 text-xs font-bold text-slate-300 hover:text-white transition-colors cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={submittingProof || !selectedMethod}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-linear-to-r from-amber-500 to-yellow-500 px-5 py-2.5 text-xs font-black text-[#0B132B] shadow-lg hover:brightness-110 disabled:opacity-50 cursor-pointer"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 px-5 py-2.5 text-xs font-black text-slate-950 shadow-lg shadow-cyan-500/20 transition-all disabled:opacity-50 cursor-pointer"
                     >
                       {submittingProof ? (
                         <>

@@ -1,6 +1,7 @@
 const CACHE_NAME = 'sabipredicts-v1';
 const PRECACHE_ASSETS = [
   '/',
+  '/predictions',
   '/manifest.json',
   '/icons/icon.svg',
   '/icons/icon-192.svg',
