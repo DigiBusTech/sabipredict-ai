@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { 
   CheckSquare, BookOpen, Key, Cpu, CreditCard, 
-  Palette, Bell 
+  Palette, Bell, ShieldCheck 
 } from 'lucide-react';
 import { 
   Prediction, BlogPost, SportsmonksSettings, 
@@ -18,6 +18,8 @@ import AiTab from './AiTab';
 import PlansTab from './PlansTab';
 import BrandingTab from './BrandingTab';
 import RemindersTab from './RemindersTab';
+import PendingPaymentsTab from './PendingPaymentsTab';
+import { ManualPaymentMethod, PendingSubscription } from '@/lib/types';
 
 interface AdminDashboardClientProps {
   predictions: Prediction[];
@@ -32,6 +34,8 @@ interface AdminDashboardClientProps {
   reminderLogs?: SubscriptionReminderLog[];
   initialLeagues?: LeagueOption[];
   initialProvider?: DataProviderType;
+  manualMethods?: ManualPaymentMethod[];
+  pendingSubscriptions?: PendingSubscription[];
 }
 
 export default function AdminDashboardClient({
@@ -47,15 +51,19 @@ export default function AdminDashboardClient({
   reminderLogs = [],
   initialLeagues,
   initialProvider,
+  manualMethods = [],
+  pendingSubscriptions = [],
 }: AdminDashboardClientProps) {
   const [activeTab, setActiveTab] = useState<
-    'predictions' | 'blog' | 'api' | 'ai' | 'plans' | 'branding' | 'reminders'
+    'predictions' | 'blog' | 'api' | 'ai' | 'plans' | 'branding' | 'reminders' | 'pending-payments'
   >('predictions');
 
   const pendingCount = predictions.filter((p) => p.status === 'pending').length;
+  const pendingSubsCount = pendingSubscriptions.filter((s) => s.status === 'pending').length;
 
   const tabs = [
     { id: 'predictions', label: 'Predictions Moderation', icon: CheckSquare, badge: pendingCount },
+    { id: 'pending-payments', label: 'Subscription Approvals', icon: ShieldCheck, badge: pendingSubsCount },
     { id: 'blog', label: 'Blog Management', icon: BookOpen, badge: posts.length },
     { id: 'api', label: 'API Management', icon: Key },
     { id: 'ai', label: 'AI & LLM Management', icon: Cpu },
@@ -106,12 +114,16 @@ export default function AdminDashboardClient({
             initialProvider={initialProvider}
           />
         )}
+        {activeTab === 'pending-payments' && (
+          <PendingPaymentsTab initialItems={pendingSubscriptions} />
+        )}
         {activeTab === 'blog' && <BlogTab posts={posts} />}
         {activeTab === 'api' && (
           <ApiTab
             dataProviderSettings={dataProviderSettings}
             sportsmonksSettings={sportsmonksSettings}
             paymentSettings={paymentSettings}
+            initialManualMethods={manualMethods}
           />
         )}
         {activeTab === 'ai' && <AiTab initialSettings={aiSettings} />}

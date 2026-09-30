@@ -9,8 +9,15 @@ import {
   PredictionTier,
   PredictionStatus,
   SiteBrandingSettings,
-  SubscriptionReminderLog
+  SubscriptionReminderLog,
+  ManualPaymentMethod,
+  PendingSubscription,
+  PendingSubscriptionStatus
 } from './types';
+import { 
+  sendSubscriptionApprovedEmail, 
+  sendSubscriptionRejectedEmail 
+} from './email-service';
 
 // =============================================================================
 // PROFILES & AUTH RBAC
@@ -579,5 +586,425 @@ export async function insertSubscriptionReminderLog(
     return false;
   }
 }
+
+
+// =============================================================================
+// DYNAMIC MANUAL PAYMENT METHODS
+// =============================================================================
+
+export const DEFAULT_MANUAL_PAYMENT_METHODS: ManualPaymentMethod[] = [
+  {
+    id: 'method_usdt_trc20',
+    method_name: 'USDT (TRC20 Crypto)',
+    account_details: 'TYDzsYUEWcKkJQ1vE9m4rZtF7VqKLaBN3P',
+    instructions: 'Send only USDT via the TRC20 (Tron) network. Double check recipient address before dispatch. Upload your transfer receipt or paste your Transaction Hash (TxID) below.',
+    is_active: true,
+    require_file_proof: true,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'method_bank_transfer',
+    method_name: 'Local Bank Wire / Transfer',
+    account_details: 'Bank: Guaranty Trust Bank (GTB)\nAccount Number: 0123456789\nAccount Name: SabiPredict Global Ltd',
+    instructions: 'Please enter your registered SabiPredict email in the transfer narrative/reference. Upload your debit receipt or screenshot below.',
+    is_active: true,
+    require_file_proof: true,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'method_opay_palmpay',
+    method_name: 'OPay / Mobile Wallet',
+    account_details: 'OPay Account Number: 08123456789\nAccount Name: SabiPredict Tech',
+    instructions: 'Send directly from your OPay or PalmPay app. Upload your payment slip/screenshot or input your sender account name below.',
+    is_active: true,
+    require_file_proof: true,
+    created_at: new Date().toISOString(),
+  },
+];
+
+export async function getManualPaymentMethods(onlyActive = false): Promise<ManualPaymentMethod[]> {
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from('manual_payment_methods')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    let methods: ManualPaymentMethod[] = [];
+
+    if (!error && Array.isArray(data) && data.length > 0) {
+      methods = data as ManualPaymentMethod[];
+    } else {
+      // Fallback to system_settings
+      const fallback = await getSystemSettings<ManualPaymentMethod[]>('manual_payment_methods');
+      if (Array.isArray(fallback) && fallback.length > 0) {
+        methods = fallback;
+      } else {
+        // Auto-seed defaults into system_settings
+        await updateSystemSettings(
+          'manual_payment_methods',
+          DEFAULT_MANUAL_PAYMENT_METHODS,
+          'Dynamic manual payment methods (Crypto, E-Wallets, Bank Transfers)'
+        );
+        methods = DEFAULT_MANUAL_PAYMENT_METHODS;
+      }
+    }
+
+    if (onlyActive) {
+      return methods.filter((m) => m.is_active);
+    }
+    return methods;
+  } catch (err) {
+    console.error('getManualPaymentMethods error:', err);
+    return onlyActive
+      ? DEFAULT_MANUAL_PAYMENT_METHODS.filter((m) => m.is_active)
+      : DEFAULT_MANUAL_PAYMENT_METHODS;
+  }
+}
+
+export async function saveManualPaymentMethod(
+  method: Partial<ManualPaymentMethod>
+): Promise<ManualPaymentMethod | null> {
+  const methodId = method.id || crypto.randomUUID();
+  const now = new Date().toISOString();
+  const record: ManualPaymentMethod = {
+    id: methodId,
+    method_name: method.method_name || 'Manual Payment',
+    account_details: method.account_details || '',
+    instructions: method.instructions || '',
+    is_active: method.is_active !== undefined ? method.is_active : true,
+    require_file_proof: method.require_file_proof !== undefined ? method.require_file_proof : true,
+    created_at: method.created_at || now,
+    updated_at: now,
+  };
+
+  try {
+    const supabase = createAdminClient();
+    const { error } = await supabase
+      .from('manual_payment_methods')
+      .upsert(record);
+
+    if (error && (error.code === 'PGRST205' || error.message?.includes('schema cache'))) {
+      // Fallback to system_settings
+      const existing = (await getSystemSettings<ManualPaymentMethod[]>('manual_payment_methods')) || DEFAULT_MANUAL_PAYMENT_METHODS;
+      const index = existing.findIndex((m) => m.id === methodId);
+      let updated: ManualPaymentMethod[];
+      if (index >= 0) {
+        updated = [...existing];
+        updated[index] = record;
+      } else {
+        updated = [...existing, record];
+      }
+      await updateSystemSettings('manual_payment_methods', updated, 'Dynamic manual payment methods');
+      return record;
+    }
+
+    if (!error) return record;
+    return null;
+  } catch (err) {
+    console.error('saveManualPaymentMethod error:', err);
+    return null;
+  }
+}
+
+export async function deleteManualPaymentMethod(id: string): Promise<boolean> {
+  try {
+    const supabase = createAdminClient();
+    const { error } = await supabase
+      .from('manual_payment_methods')
+      .delete()
+      .eq('id', id);
+
+    // Fallback or sync in system_settings
+    const existing = (await getSystemSettings<ManualPaymentMethod[]>('manual_payment_methods')) || DEFAULT_MANUAL_PAYMENT_METHODS;
+    const updated = existing.filter((m) => m.id !== id);
+    await updateSystemSettings('manual_payment_methods', updated, 'Dynamic manual payment methods');
+
+    return !error;
+  } catch (err) {
+    console.error('deleteManualPaymentMethod error:', err);
+    return false;
+  }
+}
+
+// =============================================================================
+// PENDING SUBSCRIPTIONS (Manual Payment Approvals)
+// =============================================================================
+
+export async function getPendingSubscriptions(
+  statusFilter?: PendingSubscriptionStatus
+): Promise<PendingSubscription[]> {
+  try {
+    const supabase = createAdminClient();
+    const query = supabase
+      .from('pending_subscriptions')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (statusFilter) {
+      query.eq('status', statusFilter);
+    }
+
+    const { data, error } = await query;
+
+    let items: PendingSubscription[] = [];
+
+    if (!error && Array.isArray(data)) {
+      items = data as PendingSubscription[];
+    } else {
+      // Fallback to system_settings
+      const fallback = (await getSystemSettings<PendingSubscription[]>('pending_subscriptions')) || [];
+      items = Array.isArray(fallback) ? fallback : [];
+      if (statusFilter) {
+        items = items.filter((s) => s.status === statusFilter);
+      }
+    }
+
+    // Enrich items with profile email and plan name if missing
+    if (items.length > 0) {
+      const userIds = Array.from(new Set(items.map((i) => i.user_id).filter(Boolean)));
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, email, full_name')
+          .in('id', userIds);
+
+        const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+        const plans = await getSubscriptionPlans();
+        const planMap = new Map((plans || []).map((p: any) => [p.id, p]));
+
+        items = items.map((item) => {
+          const prof: any = profileMap.get(item.user_id);
+          const pl: any = planMap.get(item.plan_id);
+          return {
+            ...item,
+            user_email: item.user_email || prof?.email || 'user@sabipredict.com',
+            user_name: item.user_name || prof?.full_name || 'Subscriber',
+            plan_name: item.plan_name || pl?.name || item.plan_id,
+            plan_price: item.plan_price !== undefined ? item.plan_price : pl?.price,
+          };
+        });
+      }
+    }
+
+    return items;
+  } catch (err) {
+    console.error('getPendingSubscriptions error:', err);
+    return [];
+  }
+}
+
+export async function createPendingSubscription(data: {
+  user_id: string;
+  plan_id: string;
+  payment_method_used: string;
+  transaction_reference: string;
+  proof_file_url?: string;
+}): Promise<{ success: boolean; data?: PendingSubscription; error?: string }> {
+  try {
+    const supabase = createAdminClient();
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    // Fetch user and plan for enriched metadata
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email, full_name')
+      .eq('id', data.user_id)
+      .maybeSingle();
+
+    const plans = await getSubscriptionPlans();
+    const plan = plans.find((p) => p.id === data.plan_id);
+
+    const record: PendingSubscription = {
+      id,
+      user_id: data.user_id,
+      user_email: profile?.email || '',
+      user_name: profile?.full_name || '',
+      plan_id: data.plan_id,
+      plan_name: plan?.name || data.plan_id,
+      plan_price: plan?.price,
+      payment_method_used: data.payment_method_used,
+      transaction_reference: data.transaction_reference.trim(),
+      proof_file_url: data.proof_file_url || undefined,
+      status: 'pending',
+      created_at: now,
+      updated_at: now,
+    };
+
+    const { error } = await supabase
+      .from('pending_subscriptions')
+      .insert([record]);
+
+    if (error && (error.code === 'PGRST205' || error.message?.includes('schema cache'))) {
+      // Fallback in system_settings
+      const existing = (await getSystemSettings<PendingSubscription[]>('pending_subscriptions')) || [];
+      const updated = [record, ...(Array.isArray(existing) ? existing : [])];
+      await updateSystemSettings('pending_subscriptions', updated, 'Pending manual payment subscriptions');
+      return { success: true, data: record };
+    }
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: record };
+  } catch (err: any) {
+    console.error('createPendingSubscription error:', err);
+    return { success: false, error: err.message || 'Failed to submit payment.' };
+  }
+}
+export async function updatePendingSubscriptionStatus(
+  id: string,
+  status: PendingSubscriptionStatus,
+  adminNotes?: string,
+  rejectionReason?: string
+): Promise<boolean> {
+  try {
+    const supabase = createAdminClient();
+    const now = new Date().toISOString();
+
+    const payload: any = {
+      status,
+      admin_notes: adminNotes || null,
+      updated_at: now,
+    };
+    if (rejectionReason !== undefined) {
+      payload.rejection_reason = rejectionReason;
+    }
+
+    const { error } = await supabase
+      .from('pending_subscriptions')
+      .update(payload)
+      .eq('id', id);
+
+    // Sync or fallback in system_settings
+    const existing = (await getSystemSettings<PendingSubscription[]>('pending_subscriptions')) || [];
+    const updated = existing.map((item) =>
+      item.id === id
+        ? { 
+            ...item, 
+            status, 
+            admin_notes: adminNotes || item.admin_notes,
+            rejection_reason: rejectionReason !== undefined ? rejectionReason : item.rejection_reason,
+            updated_at: now 
+          }
+        : item
+    );
+    await updateSystemSettings('pending_subscriptions', updated, 'Pending manual payment subscriptions');
+
+    return !error;
+  } catch (err) {
+    console.error('updatePendingSubscriptionStatus error:', err);
+    return false;
+  }
+}
+
+export async function approvePendingSubscription(
+  pendingId: string,
+  adminNotes?: string
+): Promise<{ success: boolean; error?: string; userEmail?: string }> {
+  try {
+    const supabase = createAdminClient();
+    const all = await getPendingSubscriptions();
+    const target = all.find((s) => s.id === pendingId);
+
+    if (!target) {
+      return { success: false, error: 'Subscription request not found.' };
+    }
+
+    // Determine duration based on plan
+    let durationDays = 30; // default monthly
+    const planLower = (target.plan_id + ' ' + (target.plan_name || '')).toLowerCase();
+    if (planLower.includes('yearly') || planLower.includes('annual')) {
+      durationDays = 365;
+    } else if (planLower.includes('quarterly')) {
+      durationDays = 90;
+    } else if (planLower.includes('lifetime')) {
+      durationDays = 3650;
+    }
+
+    const vipUntil = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+
+    // 1. Upgrade user in profiles (safely handling optional vip_until column)
+    const profilePayload: any = {
+      role: 'vip_user',
+      subscription_status: 'active',
+      subscription_tier: 'vip',
+      updated_at: new Date().toISOString(),
+    };
+
+    let { error: profileErr } = await supabase
+      .from('profiles')
+      .update({ ...profilePayload, vip_until: vipUntil })
+      .eq('id', target.user_id);
+
+    if (profileErr && (profileErr.code === 'PGRST204' || profileErr.message?.includes('vip_until'))) {
+      const { error: retryErr } = await supabase
+        .from('profiles')
+        .update(profilePayload)
+        .eq('id', target.user_id);
+      profileErr = retryErr;
+    }
+
+    if (profileErr) {
+      console.error('Error upgrading user profile to VIP:', profileErr);
+    }
+
+    // 2. Mark pending subscription as approved
+    await updatePendingSubscriptionStatus(pendingId, 'approved', adminNotes || 'Approved by administrator');
+
+    // 3. Send approval confirmation email
+    if (target.user_email) {
+      await sendSubscriptionApprovedEmail({
+        to: target.user_email,
+        fullName: target.user_name,
+        planName: target.plan_name,
+        vipUntil,
+      });
+    }
+
+    return { success: true, userEmail: target.user_email };
+  } catch (err: any) {
+    console.error('approvePendingSubscription error:', err);
+    return { success: false, error: err.message || 'Approval failed.' };
+  }
+}
+
+export async function rejectPendingSubscription(
+  pendingId: string,
+  reason?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const all = await getPendingSubscriptions();
+    const target = all.find((s) => s.id === pendingId);
+
+    if (!target) {
+      return { success: false, error: 'Subscription request not found.' };
+    }
+
+    await updatePendingSubscriptionStatus(
+      pendingId,
+      'rejected',
+      reason || 'Rejected by administrator',
+      reason || 'Rejected by administrator'
+    );
+
+    if (target.user_email) {
+      await sendSubscriptionRejectedEmail({
+        to: target.user_email,
+        fullName: target.user_name,
+        planName: target.plan_name,
+        reason,
+      });
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('rejectPendingSubscription error:', err);
+    return { success: false, error: err.message || 'Rejection failed.' };
+  }
+}
+
 
 

@@ -13,6 +13,7 @@ import {
   triggerGenerateAITipsAction, createManualPredictionAction, fetchAvailableLeaguesAction 
 } from '@/app/actions/predictions';
 import PredictionRow from './PredictionRow';
+import SportsTelemetryPreloader from '@/components/ui/SportsTelemetryPreloader';
 
 interface PredictionsTabProps {
   predictions: Prediction[];
@@ -380,6 +381,19 @@ export default function PredictionsTab({
           </div>
         </div>
       </div>
+
+      {loadingAction && (
+        <SportsTelemetryPreloader
+          variant="compact"
+          message={
+            loadingAction === 'sync'
+              ? 'Ingesting Live Sports Fixtures & Telemetry...'
+              : loadingAction === 'ai'
+              ? 'Computing Poisson Goal Matrices & Confidence Scores...'
+              : 'Processing Quantitative Sports Telemetry...'
+          }
+        />
+      )}
 
       {msg && (
         <div

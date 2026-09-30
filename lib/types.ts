@@ -82,6 +82,37 @@ export interface SportsmonksSettings {
   api_key: string;
 }
 
+export interface ManualPaymentMethod {
+  id: string;
+  method_name: string;
+  account_details: string;
+  instructions: string;
+  is_active: boolean;
+  require_file_proof?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type PendingSubscriptionStatus = 'pending' | 'approved' | 'rejected';
+
+export interface PendingSubscription {
+  id: string;
+  user_id: string;
+  user_email?: string;
+  user_name?: string;
+  plan_id: string;
+  plan_name?: string;
+  plan_price?: number;
+  payment_method_used: string;
+  transaction_reference: string;
+  status: PendingSubscriptionStatus;
+  proof_file_url?: string;
+  rejection_reason?: string;
+  admin_notes?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
 export interface PaymentGatewaySettings {
   active_provider: 'paystack' | 'stripe' | 'manual';
   stripe_public_key: string;
@@ -89,6 +120,7 @@ export interface PaymentGatewaySettings {
   paystack_public_key: string;
   paystack_secret_key: string;
   manual_bank_details: string;
+  manual_methods?: ManualPaymentMethod[];
 }
 
 export interface AILLMSettings {

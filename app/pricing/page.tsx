@@ -1,6 +1,12 @@
 import React from 'react';
 import { Crown } from 'lucide-react';
-import { getSubscriptionPlans, getCurrentUserProfile } from '@/lib/db';
+import { 
+  getSubscriptionPlans, 
+  getCurrentUserProfile, 
+  getSystemSettings, 
+  getManualPaymentMethods 
+} from '@/lib/db';
+import { PaymentGatewaySettings } from '@/lib/types';
 import PricingClient from '@/components/PricingClient';
 
 export const metadata = {
@@ -9,10 +15,14 @@ export const metadata = {
 };
 
 export default async function PricingPage() {
-  const [plans, profile] = await Promise.all([
+  const [plans, profile, paymentSettings, manualMethods] = await Promise.all([
     getSubscriptionPlans(),
     getCurrentUserProfile(),
+    getSystemSettings<PaymentGatewaySettings>('payment_gateways'),
+    getManualPaymentMethods(true),
   ]);
+
+  const activeGateway = paymentSettings?.active_provider || 'manual';
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 space-y-10">
@@ -29,8 +39,14 @@ export default async function PricingPage() {
         </p>
       </div>
 
-      <PricingClient plans={plans} userProfile={profile} />
+      <PricingClient 
+        plans={plans} 
+        userProfile={profile} 
+        activeGateway={activeGateway}
+        initialManualMethods={manualMethods}
+      />
     </div>
   );
 }
+
 

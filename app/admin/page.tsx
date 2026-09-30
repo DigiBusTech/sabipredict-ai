@@ -6,7 +6,9 @@ import {
   getSubscriptionPlans,
   getSiteBranding,
   getVipProfiles,
-  getSubscriptionReminderLogs
+  getSubscriptionReminderLogs,
+  getManualPaymentMethods,
+  getPendingSubscriptions
 } from '@/lib/db';
 import { fetchAvailableLeagues } from '@/lib/fixtures-service';
 import { 
@@ -29,6 +31,8 @@ export default async function AdminDashboardPage() {
     brandingSettings,
     vipProfiles,
     reminderLogs,
+    manualMethods,
+    pendingSubscriptions,
   ] = await Promise.all([
     getAdminPredictions(),
     getBlogPosts(false),
@@ -40,6 +44,8 @@ export default async function AdminDashboardPage() {
     getSiteBranding(),
     getVipProfiles(),
     getSubscriptionReminderLogs(100),
+    getManualPaymentMethods(),
+    getPendingSubscriptions(),
   ]);
 
   const { leagues, activeProvider } = await fetchAvailableLeagues();
@@ -58,6 +64,8 @@ export default async function AdminDashboardPage() {
       reminderLogs={reminderLogs}
       initialLeagues={leagues}
       initialProvider={activeProvider}
+      manualMethods={manualMethods}
+      pendingSubscriptions={pendingSubscriptions}
     />
   );
 }

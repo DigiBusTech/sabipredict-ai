@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { 
   getSystemSettings, 
   upsertSubscriptionPlan, 
-  deleteSubscriptionPlan 
+  deleteSubscriptionPlan,
+  getManualPaymentMethods
 } from '@/lib/db';
 import { getCurrentUser } from './auth';
 import { createAdminClient } from '@/utils/supabase/admin';
@@ -17,12 +18,14 @@ export async function createCheckoutSessionAction(planId: string, providerOverri
   }
 
   const paymentSettings = await getSystemSettings<PaymentGatewaySettings>('payment_gateways');
-  const provider = providerOverride || paymentSettings?.active_provider || 'paystack';
+  const provider = providerOverride || paymentSettings?.active_provider || 'manual';
 
   if (provider === 'manual') {
+    const manualMethods = await getManualPaymentMethods(true);
     return {
       provider: 'manual',
-      instructions: paymentSettings?.manual_bank_details || 'Contact support for manual bank deposit verification.',
+      manualMethods,
+      instructions: paymentSettings?.manual_bank_details || 'Manual payment methods available.',
     };
   }
 

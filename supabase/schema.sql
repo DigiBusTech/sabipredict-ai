@@ -180,6 +180,39 @@ CREATE TABLE IF NOT EXISTS public.subscription_reminder_logs (
 CREATE INDEX IF NOT EXISTS idx_reminder_logs_user_id ON public.subscription_reminder_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_reminder_logs_sent_at ON public.subscription_reminder_logs(sent_at);
 
+-- 7. MANUAL PAYMENT METHODS TABLE (Dynamic Crypto, E-Wallets, Bank Transfers)
+CREATE TABLE IF NOT EXISTS public.manual_payment_methods (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    method_name TEXT NOT NULL,
+    account_details TEXT NOT NULL,
+    instructions TEXT NOT NULL DEFAULT '',
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    require_file_proof BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE INDEX IF NOT EXISTS idx_manual_payment_active ON public.manual_payment_methods(is_active);
+
+-- 8. PENDING SUBSCRIPTIONS TABLE (User submissions awaiting admin verification)
+CREATE TABLE IF NOT EXISTS public.pending_subscriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    plan_id TEXT NOT NULL,
+    payment_method_used TEXT NOT NULL,
+    transaction_reference TEXT NOT NULL,
+    proof_file_url TEXT,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    rejection_reason TEXT,
+    admin_notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE INDEX IF NOT EXISTS idx_pending_subs_user_id ON public.pending_subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_pending_subs_status ON public.pending_subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_pending_subs_created_at ON public.pending_subscriptions(created_at);
+
 
 
 -- =============================================================================
@@ -200,6 +233,8 @@ ALTER TABLE public.blog_posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subscription_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subscription_reminder_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.manual_payment_methods ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pending_subscriptions ENABLE ROW LEVEL SECURITY;
 
 
 -- PROFILES POLICIES
@@ -268,6 +303,33 @@ CREATE POLICY "Admin full access on subscription plans"
 DROP POLICY IF EXISTS "Admin full access on reminder logs" ON public.subscription_reminder_logs;
 CREATE POLICY "Admin full access on reminder logs"
     ON public.subscription_reminder_logs FOR ALL
+    USING (public.is_admin());
+
+-- MANUAL PAYMENT METHODS POLICIES
+DROP POLICY IF EXISTS "Public can view active payment methods" ON public.manual_payment_methods;
+CREATE POLICY "Public can view active payment methods"
+    ON public.manual_payment_methods FOR SELECT
+    USING (is_active = true OR public.is_admin());
+
+DROP POLICY IF EXISTS "Admin full access on manual payment methods" ON public.manual_payment_methods;
+CREATE POLICY "Admin full access on manual payment methods"
+    ON public.manual_payment_methods FOR ALL
+    USING (public.is_admin());
+
+-- PENDING SUBSCRIPTIONS POLICIES
+DROP POLICY IF EXISTS "Users can insert own pending subscriptions" ON public.pending_subscriptions;
+CREATE POLICY "Users can insert own pending subscriptions"
+    ON public.pending_subscriptions FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can view own pending subscriptions" ON public.pending_subscriptions;
+CREATE POLICY "Users can view own pending subscriptions"
+    ON public.pending_subscriptions FOR SELECT
+    USING (auth.uid() = user_id OR public.is_admin());
+
+DROP POLICY IF EXISTS "Admin full access on pending subscriptions" ON public.pending_subscriptions;
+CREATE POLICY "Admin full access on pending subscriptions"
+    ON public.pending_subscriptions FOR ALL
     USING (public.is_admin());
 
 
