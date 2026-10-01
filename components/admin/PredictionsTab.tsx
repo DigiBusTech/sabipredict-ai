@@ -31,6 +31,7 @@ export default function PredictionsTab({
   const [showManualForm, setShowManualForm] = useState(false);
   const [scoreInputs, setScoreInputs] = useState<Record<string, { home: string; away: string }>>({});
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [settlementFilter, setSettlementFilter] = useState<'all' | 'settled' | 'not_settled'>('all');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Date Range state: defaults to Today through Next 3 Days
@@ -113,7 +114,27 @@ export default function PredictionsTab({
     );
   };
 
-  const filtered = predictions.filter((p) => statusFilter === 'all' || p.status === statusFilter);
+  const filtered = predictions.filter((p) => {
+    // 1. Moderation Status Filter
+    if (statusFilter !== 'all' && p.status !== statusFilter) {
+      return false;
+    }
+
+    // 2. Settlement Status Filter
+    const isSettled =
+      p.prediction_outcome === 'Won' ||
+      p.prediction_outcome === 'Lost' ||
+      p.prediction_outcome === 'Void';
+
+    if (settlementFilter === 'settled' && !isSettled) {
+      return false;
+    }
+    if (settlementFilter === 'not_settled' && isSettled) {
+      return false;
+    }
+
+    return true;
+  });
   const allFilteredSelected = filtered.length > 0 && filtered.every((p) => selectedIds.includes(p.id));
 
   const toggleSelectAll = () => {
@@ -458,15 +479,53 @@ export default function PredictionsTab({
 
       {/* Filter and Bulk Action Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-[#111C38] p-3 rounded-2xl border border-[#1C2541]">
-        <div className="flex items-center gap-2">
-          <button onClick={toggleSelectAll} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#223156] text-xs font-medium text-slate-300 hover:text-white">
-            {allFilteredSelected ? <CheckSquare className="h-4 w-4 text-[#48CAE4]" /> : <Square className="h-4 w-4 text-slate-400" />}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={toggleSelectAll}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#223156] text-xs font-medium text-slate-300 hover:text-white transition cursor-pointer"
+          >
+            {allFilteredSelected ? (
+              <CheckSquare className="h-4 w-4 text-[#48CAE4]" />
+            ) : (
+              <Square className="h-4 w-4 text-slate-400" />
+            )}
             <span>Select All ({filtered.length})</span>
           </button>
+
+          {/* Moderation Status Filter */}
           <div className="flex items-center gap-1 rounded-xl bg-[#0B132B] p-1 border border-[#223156]">
             {(['all', 'pending', 'approved', 'rejected'] as const).map((filter) => (
-              <button key={filter} onClick={() => setStatusFilter(filter)} className={`px-3 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider transition ${statusFilter === filter ? 'bg-[#48CAE4] text-[#0B132B]' : 'text-slate-400 hover:text-slate-200'}`}>
+              <button
+                key={filter}
+                onClick={() => setStatusFilter(filter)}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider transition cursor-pointer ${
+                  statusFilter === filter
+                    ? 'bg-[#48CAE4] text-[#0B132B]'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
                 {filter}
+              </button>
+            ))}
+          </div>
+
+          {/* Settlement Outcome Filter */}
+          <div className="flex items-center gap-1 rounded-xl bg-[#0B132B] p-1 border border-[#223156]">
+            {([
+              { id: 'all', label: 'All' },
+              { id: 'not_settled', label: 'Not Settled' },
+              { id: 'settled', label: 'Settled' },
+            ] as const).map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => setSettlementFilter(id)}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider transition cursor-pointer ${
+                  settlementFilter === id
+                    ? 'bg-[#48CAE4] text-[#0B132B]'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {label}
               </button>
             ))}
           </div>
@@ -475,16 +534,16 @@ export default function PredictionsTab({
         {selectedIds.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 animate-in fade-in duration-200">
             <span className="text-xs font-bold text-[#48CAE4] px-2">{selectedIds.length} Selected:</span>
-            <button disabled={loadingAction === 'bulk'} onClick={() => handleBulkAction(() => bulkApprovePredictionsAction(selectedIds, 'free'), 'Approve Free')} className="flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold hover:bg-emerald-500/30">
+            <button disabled={loadingAction === 'bulk'} onClick={() => handleBulkAction(() => bulkApprovePredictionsAction(selectedIds, 'free'), 'Approve Free')} className="flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold hover:bg-emerald-500/30 cursor-pointer">
               <Check className="h-3.5 w-3.5" /> Approve Free
             </button>
-            <button disabled={loadingAction === 'bulk'} onClick={() => handleBulkAction(() => bulkApprovePredictionsAction(selectedIds, 'vip'), 'Approve VIP')} className="flex items-center gap-1 px-3 py-1 rounded-lg bg-linear-to-r from-amber-500 to-yellow-500 text-[#0B132B] text-xs font-black">
+            <button disabled={loadingAction === 'bulk'} onClick={() => handleBulkAction(() => bulkApprovePredictionsAction(selectedIds, 'vip'), 'Approve VIP')} className="flex items-center gap-1 px-3 py-1 rounded-lg bg-linear-to-r from-amber-500 to-yellow-500 text-[#0B132B] text-xs font-black cursor-pointer">
               <Crown className="h-3.5 w-3.5" /> Approve VIP
             </button>
-            <button disabled={loadingAction === 'bulk'} onClick={() => handleBulkAction(() => bulkRejectPredictionsAction(selectedIds), 'Reject')} className="flex items-center gap-1 px-3 py-1 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold hover:bg-rose-500/30">
+            <button disabled={loadingAction === 'bulk'} onClick={() => handleBulkAction(() => bulkRejectPredictionsAction(selectedIds), 'Reject')} className="flex items-center gap-1 px-3 py-1 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold hover:bg-rose-500/30 cursor-pointer">
               <XCircle className="h-3.5 w-3.5" /> Reject
             </button>
-            <button disabled={loadingAction === 'bulk'} onClick={() => handleBulkAction(() => bulkDeletePredictionsAction(selectedIds), 'Delete')} className="flex items-center gap-1 px-3 py-1 rounded-lg bg-red-950/40 text-red-400 border border-red-800/40 text-xs font-bold hover:bg-red-900/60">
+            <button disabled={loadingAction === 'bulk'} onClick={() => handleBulkAction(() => bulkDeletePredictionsAction(selectedIds), 'Delete')} className="flex items-center gap-1 px-3 py-1 rounded-lg bg-red-950/40 text-red-400 border border-red-800/40 text-xs font-bold hover:bg-red-900/60 cursor-pointer">
               <Trash2 className="h-3.5 w-3.5" /> Delete
             </button>
           </div>
@@ -495,7 +554,7 @@ export default function PredictionsTab({
       <div className="space-y-3">
         {filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#223156] bg-[#111C38]/40 p-8 text-center text-sm text-slate-400">
-            No predictions found under the &quot;{statusFilter}&quot; filter.
+            No predictions found matching &quot;{statusFilter}&quot; status and &quot;{settlementFilter === 'all' ? 'all outcomes' : settlementFilter === 'settled' ? 'settled' : 'not settled'}&quot;.
           </div>
         ) : (
           filtered.map((p) => (
