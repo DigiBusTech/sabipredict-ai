@@ -22,6 +22,12 @@ export default function PlansTab({ plans }: { plans: SubscriptionPlan[] }) {
       interval: (fd.get('interval') as BillingInterval) || 'monthly',
       tier: (fd.get('tier') as VipPlanTier) || 'standard',
       features: (fd.get('features') as string).split('\n').map((s) => s.trim()).filter(Boolean),
+      translations: (['fr', 'es', 'pt'] as const).reduce<NonNullable<SubscriptionPlan['translations']>>((all, locale) => {
+        const name = String(fd.get(`${locale}_name`) || '').trim();
+        const features = String(fd.get(`${locale}_features`) || '').split('\n').map((feature) => feature.trim()).filter(Boolean);
+        if (name || features.length) all[locale] = { ...(name ? { name } : {}), ...(features.length ? { features } : {}) };
+        return all;
+      }, {}),
       is_active: fd.get('is_active') === 'true',
     };
     try {
@@ -82,6 +88,18 @@ export default function PlansTab({ plans }: { plans: SubscriptionPlan[] }) {
             <option value="lifetime">Lifetime</option>
           </select>
           <textarea name="features" defaultValue={editingPlan.features?.join('\n')} rows={3} placeholder="Features (one per line)..." className="w-full rounded-xl bg-[#0B132B] border border-[#223156] p-2 text-white" />
+          <details className="rounded-xl border border-[#223156] bg-[#0B132B]/60 p-3">
+            <summary className="cursor-pointer text-xs font-bold text-[#48CAE4]">Optional translated plan copy</summary>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              {(['fr', 'es', 'pt'] as const).map((locale) => (
+                <fieldset key={locale} className="space-y-2">
+                  <legend className="text-[10px] font-black uppercase text-slate-300">{locale}</legend>
+                  <input name={`${locale}_name`} defaultValue={editingPlan.translations?.[locale]?.name || ''} placeholder="Plan name" className="w-full rounded-lg border border-[#223156] bg-[#111C38] px-2 py-1.5 text-xs text-white" />
+                  <textarea name={`${locale}_features`} defaultValue={editingPlan.translations?.[locale]?.features?.join('\n') || ''} rows={4} placeholder="Features, one per line" className="w-full rounded-lg border border-[#223156] bg-[#111C38] p-2 text-xs text-white" />
+                </fieldset>
+              ))}
+            </div>
+          </details>
           <div className="flex justify-between items-center">
             <label className="flex items-center gap-1.5 text-slate-300">
               <input type="checkbox" name="is_active" value="true" defaultChecked={editingPlan.is_active !== false} />

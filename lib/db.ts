@@ -14,6 +14,7 @@ import {
   PendingSubscription,
   PendingSubscriptionStatus
 } from './types';
+import { Locale } from '@/lib/i18n/types';
 import { 
   sendSubscriptionApprovedEmail, 
   sendSubscriptionRejectedEmail 
@@ -67,6 +68,7 @@ export async function getPredictions(options?: {
   status?: PredictionStatus | 'all';
   tier?: PredictionTier | 'all';
   limit?: number;
+  locale?: Locale;
 }): Promise<Prediction[]> {
   try {
     const supabase = await createClient();
@@ -94,7 +96,13 @@ export async function getPredictions(options?: {
       return [];
     }
 
-    return (data as Prediction[]) || [];
+    const locale = options?.locale || 'en';
+    return ((data as Prediction[]) || []).map((prediction) => ({
+      ...prediction,
+      market: prediction.translations?.[locale]?.market || prediction.market,
+      ai_analysis: prediction.translations?.[locale]?.ai_analysis || prediction.ai_analysis,
+      league: prediction.translations?.[locale]?.league || prediction.league,
+    }));
   } catch (error) {
     console.error('getPredictions error:', error);
     return [];
@@ -340,7 +348,18 @@ export async function bulkDeletePredictions(ids: string[]): Promise<boolean> {
 // BLOG POSTS
 // =============================================================================
 
-export async function getBlogPosts(onlyPublished = true): Promise<BlogPost[]> {
+function localizeBlogPost(post: BlogPost, locale: Locale): BlogPost {
+  const translation = post.translations?.[locale];
+  return {
+    ...post,
+    title: translation?.title || post.title,
+    excerpt: translation?.excerpt || post.excerpt,
+    content: translation?.content || post.content,
+    category: translation?.category || post.category,
+  };
+}
+
+export async function getBlogPosts(onlyPublished = true, locale: Locale = 'en'): Promise<BlogPost[]> {
   try {
     const supabase = await createClient();
     let query = supabase.from('blog_posts').select('*');
@@ -352,14 +371,14 @@ export async function getBlogPosts(onlyPublished = true): Promise<BlogPost[]> {
       console.error('getBlogPosts error:', error);
       return [];
     }
-    return (data as BlogPost[]) || [];
+    return ((data as BlogPost[]) || []).map((post) => localizeBlogPost(post, locale));
   } catch (err) {
     console.error('getBlogPosts exception:', err);
     return [];
   }
 }
 
-export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
+export async function getBlogPostBySlug(slug: string, locale: Locale = 'en'): Promise<BlogPost | null> {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -369,7 +388,7 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> 
       .single();
 
     if (error) return null;
-    return (data as BlogPost) || null;
+    return data ? localizeBlogPost(data as BlogPost, locale) : null;
   } catch {
     return null;
   }
@@ -447,7 +466,7 @@ export async function updateSystemSettings(key: string, value: any, description?
 // SUBSCRIPTION PLANS
 // =============================================================================
 
-export async function getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+export async function getSubscriptionPlans(locale: Locale = 'en'): Promise<SubscriptionPlan[]> {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -456,7 +475,11 @@ export async function getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
       .order('price', { ascending: true });
 
     if (error) return [];
-    return (data as SubscriptionPlan[]) || [];
+    return ((data as SubscriptionPlan[]) || []).map((plan) => ({
+      ...plan,
+      name: plan.translations?.[locale]?.name || plan.name,
+      features: plan.translations?.[locale]?.features || plan.features,
+    }));
   } catch {
     return [];
   }

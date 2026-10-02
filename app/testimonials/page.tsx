@@ -1,15 +1,20 @@
 import TestimonialsSection from '@/components/TestimonialsSection';
 import { getApprovedTestimonials } from '@/lib/growth';
 import { getCurrentUserProfile } from '@/lib/db';
+import { getRequestLocale } from '@/lib/i18n/server';
+import { getPageMetadata } from '@/lib/site-content';
 
-export const metadata = {
-  title: 'Member Reviews | SabiPredict AI',
-  description: 'Read member experiences and share your own review of SabiPredict AI.',
-};
+export async function generateMetadata() {
+  return getPageMetadata('/testimonials', await getRequestLocale(), {
+    title: 'Member Reviews | SabiPredict AI',
+    description: 'Read member experiences and share your own review of SabiPredict AI.',
+  });
+}
 
 export default async function TestimonialsPage() {
+  const locale = await getRequestLocale();
   const [testimonials, profile] = await Promise.all([
-    getApprovedTestimonials(),
+    getApprovedTestimonials(false, locale),
     getCurrentUserProfile(),
   ]);
 

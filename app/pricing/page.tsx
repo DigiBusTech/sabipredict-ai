@@ -8,18 +8,26 @@ import {
 } from '@/lib/db';
 import { PaymentGatewaySettings } from '@/lib/types';
 import PricingClient from '@/components/PricingClient';
+import { getRequestLocale } from '@/lib/i18n/server';
+import { getPageMetadata } from '@/lib/site-content';
+import { getActivePromoSlots } from '@/lib/site-content';
+import PromoSlotCard from '@/components/PromoSlotCard';
 
-export const metadata = {
-  title: 'VIP Lounge Subscriptions & Pricing | SabiPredict AI',
-  description: 'Unlock 80%+ Poisson confidence football predictions and daily Banker of the Day value bets.',
-};
+export async function generateMetadata() {
+  return getPageMetadata('/pricing', await getRequestLocale(), {
+    title: 'Membership Plans | SabiPredict AI',
+    description: 'Compare SabiPredict AI membership plans and billing intervals.',
+  });
+}
 
 export default async function PricingPage() {
-  const [plans, profile, paymentSettings, manualMethods] = await Promise.all([
-    getSubscriptionPlans(),
+  const locale = await getRequestLocale();
+  const [plans, profile, paymentSettings, manualMethods, promos] = await Promise.all([
+    getSubscriptionPlans(locale),
     getCurrentUserProfile(),
     getSystemSettings<PaymentGatewaySettings>('payment_gateways'),
     getManualPaymentMethods(true),
+    getActivePromoSlots('pricing-banner'),
   ]);
 
   const activeGateway = paymentSettings?.active_provider || 'manual';
@@ -45,6 +53,7 @@ export default async function PricingPage() {
         activeGateway={activeGateway}
         initialManualMethods={manualMethods}
       />
+      {promos.map((promo) => <PromoSlotCard key={promo.id} slot={promo} locale={locale} />)}
     </div>
   );
 }

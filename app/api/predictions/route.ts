@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPredictions, insertPredictions } from '@/lib/db';
 import { PredictionStatus, PredictionTier } from '@/lib/types';
+import { getRequestLocale } from '@/lib/i18n/server';
 
 export async function GET(req: NextRequest) {
   try {
@@ -9,7 +10,7 @@ export async function GET(req: NextRequest) {
     const status = (searchParams.get('status') as PredictionStatus | 'all') || 'approved';
     const tier = (searchParams.get('tier') as PredictionTier | 'all') || 'all';
 
-    const predictions = await getPredictions({ date, status, tier });
+    const predictions = await getPredictions({ date, status, tier, locale: await getRequestLocale() });
 
     return NextResponse.json({
       success: true,

@@ -15,15 +15,13 @@ export default function MobileBottomBar({
   const pathname = usePathname();
   const { t } = useTranslation();
   const isAdmin = userProfile?.role === 'admin';
-  const isVip = userProfile?.role === 'vip_user' || isAdmin;
-
   const tabs = [
     { href: '/', label: 'Home', icon: Home },
     { href: '/predictions', label: t('nav.predictions', 'Predictions'), icon: TrendingUp },
     { href: '/vip', label: t('nav.vipLounge', 'VIP Lounge'), icon: Crown, isVip: true },
     ...(isAdmin
       ? [{ href: '/admin', label: t('nav.adminPanel', 'Admin'), icon: ShieldCheck }]
-      : [{ href: userProfile ? '/account' : '/login', label: userProfile ? t('nav.mySubscription', 'Account') : t('nav.signIn', 'Sign In'), icon: User }]),
+      : [{ href: userProfile ? '/account' : '/login', label: userProfile ? t('nav.dashboard', 'Dashboard') : t('nav.signIn', 'Sign In'), icon: User }]),
   ];
 
   return (

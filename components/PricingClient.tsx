@@ -2,10 +2,11 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   Check, Crown, Shield, CreditCard, Copy, 
   CheckCircle, Wallet, ArrowRight, X, AlertCircle, Loader2,
-  UploadCloud, FileText, Image as ImageIcon, Trash
+  UploadCloud, FileText, Trash
 } from 'lucide-react';
 import { BillingInterval, SubscriptionPlan, UserProfile, ManualPaymentMethod } from '@/lib/types';
 import { createCheckoutSessionAction } from '@/app/actions/subscription';
@@ -22,6 +23,7 @@ export default function PricingClient({
   activeGateway?: 'paystack' | 'stripe' | 'manual';
   initialManualMethods?: ManualPaymentMethod[];
 }) {
+  const router = useRouter();
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
   const [billingInterval, setBillingInterval] = useState<BillingInterval>('monthly');
 
@@ -53,7 +55,7 @@ export default function PricingClient({
 
   const handleSubscribe = async (plan: SubscriptionPlan) => {
     if (!userProfile) {
-      window.location.href = `/login?redirect=/pricing`;
+      router.push('/login?redirect=/pricing');
       return;
     }
 
@@ -169,8 +171,8 @@ export default function PricingClient({
       } else {
         setSubmitError(res.error || 'Failed to submit payment proof.');
       }
-    } catch (err: any) {
-      setSubmitError(err.message || 'Submission failed.');
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Submission failed.');
     } finally {
       setSubmittingProof(false);
       setUploadStatusText('');

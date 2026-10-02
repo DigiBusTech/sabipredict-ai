@@ -25,8 +25,8 @@ export default function BlogTab({ posts }: { posts: BlogPost[] }) {
         setMsg('New blog post published.');
       }
       setEditingPost(null);
-    } catch (err: any) {
-      setMsg(err.message);
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : 'Article could not be saved.');
     } finally {
       setLoading(false);
       setTimeout(() => setMsg(null), 4000);
@@ -109,6 +109,21 @@ export default function BlogTab({ posts }: { posts: BlogPost[] }) {
 
           <input name="excerpt" defaultValue={editingPost.excerpt || ''} placeholder="Summary excerpt..." className="w-full rounded-xl bg-[#0B132B] border border-[#223156] px-3 py-2 text-white" />
           <textarea name="content" defaultValue={editingPost.content} required rows={7} placeholder="Article markdown content..." className="w-full rounded-xl bg-[#0B132B] border border-[#223156] p-3 text-white font-mono text-[11px]" />
+
+          <details className="rounded-xl border border-[#223156] bg-[#0B132B]/60 p-3">
+            <summary className="cursor-pointer text-xs font-bold text-[#48CAE4]">Optional French, Spanish, and Portuguese versions</summary>
+            <div className="mt-4 space-y-4">
+              {(['fr', 'es', 'pt'] as const).map((locale) => (
+                <fieldset key={locale} className="space-y-2 border-t border-[#223156] pt-3">
+                  <legend className="px-1 text-[11px] font-black uppercase text-slate-300">{locale}</legend>
+                  <input name={`${locale}_title`} defaultValue={editingPost.translations?.[locale]?.title || ''} placeholder={`${locale.toUpperCase()} title`} className="w-full rounded-lg border border-[#223156] bg-[#111C38] px-3 py-2 text-white" />
+                  <input name={`${locale}_category`} defaultValue={editingPost.translations?.[locale]?.category || ''} placeholder={`${locale.toUpperCase()} category`} className="w-full rounded-lg border border-[#223156] bg-[#111C38] px-3 py-2 text-white" />
+                  <textarea name={`${locale}_excerpt`} defaultValue={editingPost.translations?.[locale]?.excerpt || ''} rows={2} placeholder={`${locale.toUpperCase()} excerpt`} className="w-full rounded-lg border border-[#223156] bg-[#111C38] p-2 text-white" />
+                  <textarea name={`${locale}_content`} defaultValue={editingPost.translations?.[locale]?.content || ''} rows={5} placeholder={`${locale.toUpperCase()} article content`} className="w-full rounded-lg border border-[#223156] bg-[#111C38] p-2 font-mono text-[11px] text-white" />
+                </fieldset>
+              ))}
+            </div>
+          </details>
 
           <div className="flex items-center justify-between pt-2 border-t border-[#1C2541]">
             <label className="flex items-center gap-2 cursor-pointer">

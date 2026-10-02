@@ -1,15 +1,23 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { BookOpen, Clock, User, ArrowRight } from 'lucide-react';
 import { getBlogPosts } from '@/lib/db';
+import { getRequestLocale } from '@/lib/i18n/server';
+import { getPageMetadata } from '@/lib/site-content';
+import { getActivePromoSlots } from '@/lib/site-content';
+import PromoSlotCard from '@/components/PromoSlotCard';
 
-export const metadata = {
-  title: 'Football Betting Strategy & News | SabiPredict AI Blog',
-  description: 'Tactical breakdowns, quantitative xG tutorials, bankroll management guides, and weekend previews.',
-};
+export async function generateMetadata() {
+  return getPageMetadata('/blog', await getRequestLocale(), {
+    title: 'Football Strategy & News | SabiPredict AI',
+    description: 'Tactical breakdowns, quantitative tutorials, and match previews.',
+  });
+}
 
 export default async function BlogListPage() {
-  const posts = await getBlogPosts();
+  const locale = await getRequestLocale();
+  const [posts, promos] = await Promise.all([getBlogPosts(true, locale), getActivePromoSlots('blog-sidebar')]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
@@ -28,6 +36,7 @@ export default async function BlogListPage() {
       </div>
 
       {/* Posts Grid */}
+      {promos.map((promo) => <PromoSlotCard key={promo.id} slot={promo} locale={locale} />)}
       {posts.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[#1C2541] bg-[#111C38]/40 p-12 text-center text-xs text-slate-400">
           No articles published yet. Check back soon!
@@ -41,11 +50,7 @@ export default async function BlogListPage() {
             >
               {post.cover_image && (
                 <div className="relative h-44 w-full overflow-hidden bg-[#0B132B]">
-                  <img
-                    src={post.cover_image}
-                    alt={post.title}
-                    className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
+                  <Image unoptimized fill sizes="(max-width: 768px) 100vw, 33vw" src={post.cover_image} alt={post.title} className="object-cover group-hover:scale-105 transition-transform duration-300" />
                   <span className="absolute top-3 left-3 rounded-lg bg-[#0B132B]/90 backdrop-blur-sm px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#48CAE4] border border-[#223156]">
                     {post.category || 'Analysis'}
                   </span>

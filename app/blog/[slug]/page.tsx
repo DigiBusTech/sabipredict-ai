@@ -1,9 +1,12 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Clock, ArrowLeft, Sparkles } from 'lucide-react';
 import { getBlogPostBySlug, getBlogPosts } from '@/lib/db';
 import { BlogPost } from '@/lib/types';
+import { getRequestLocale } from '@/lib/i18n/server';
+import { getPageMetadata } from '@/lib/site-content';
 
 export async function generateMetadata({
   params,
@@ -11,12 +14,20 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const post = await getBlogPostBySlug(slug);
+  const locale = await getRequestLocale();
+  const post = await getBlogPostBySlug(slug, locale);
   if (!post) return { title: 'Article Not Found | SabiPredict AI' };
 
-  return {
+  const seo = await getPageMetadata(`/blog/${slug}`, locale, {
     title: `${post.title} | SabiPredict AI Blog`,
     description: post.excerpt || post.title,
+  });
+  return {
+    ...seo,
+    openGraph: {
+      ...seo.openGraph,
+      images: seo.openGraph?.images || (post.cover_image ? [{ url: post.cover_image }] : undefined),
+    },
   };
 }
 
@@ -26,13 +37,14 @@ export default async function BlogPostPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const post = await getBlogPostBySlug(slug);
+  const locale = await getRequestLocale();
+  const post = await getBlogPostBySlug(slug, locale);
 
   if (!post) {
     notFound();
   }
 
-  const allPosts = await getBlogPosts();
+  const allPosts = await getBlogPosts(true, locale);
   const relatedPosts = allPosts.filter((p: BlogPost) => p.slug !== slug).slice(0, 2);
 
   return (
@@ -87,11 +99,7 @@ export default async function BlogPostPage({
 
       {post.cover_image && (
         <div className="relative h-64 sm:h-96 w-full overflow-hidden rounded-2xl bg-[#111C38] border border-[#1C2541]">
-          <img
-            src={post.cover_image}
-            alt={post.title}
-            className="h-full w-full object-cover"
-          />
+          <Image unoptimized fill sizes="(max-width: 768px) 100vw, 896px" src={post.cover_image} alt={post.title} className="object-cover" />
         </div>
       )}
 

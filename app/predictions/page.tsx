@@ -1,11 +1,15 @@
 import React from 'react';
 import PredictionsFeed from '@/components/PredictionsFeed';
 import { getCurrentUserProfile } from '@/lib/db';
+import { getRequestLocale } from '@/lib/i18n/server';
+import { getPageMetadata } from '@/lib/site-content';
 
-export const metadata = {
-  title: 'Football Predictions & Value Bets | SabiPredict AI',
-  description: 'AI-calculated football betting predictions, expected goals (xG) metrics, and value tips for today, tomorrow, and past historical matches.',
-};
+export async function generateMetadata() {
+  return getPageMetadata('/predictions', await getRequestLocale(), {
+    title: 'Football Predictions | SabiPredict AI',
+    description: 'Date-filtered football predictions and settled outcomes.',
+  });
+}
 
 export default async function PredictionsPage() {
   const profile = await getCurrentUserProfile();

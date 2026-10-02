@@ -5,6 +5,7 @@ import { createAdminClient } from '@/utils/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { UserProfile } from '@/lib/types';
+import { User } from '@supabase/supabase-js';
 
 export async function signInAction(formData: FormData) {
   const email = formData.get('email') as string;
@@ -108,7 +109,7 @@ export async function signOutAction() {
 }
 
 export async function getCurrentUser(): Promise<{
-  user: any;
+  user: User | null;
   profile: UserProfile | null;
 }> {
   try {

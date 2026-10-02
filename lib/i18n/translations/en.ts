@@ -6,7 +6,10 @@ export const en: TranslationDictionary = {
     pricing: 'Pricing',
     vipLounge: 'VIP Lounge',
     blog: 'Blog',
+    reviews: 'Reviews',
+    affiliate: 'Affiliate',
     mySubscription: 'My Subscription',
+    dashboard: 'Dashboard',
     adminPanel: 'Admin Panel',
     downloadApp: 'Download App',
     signIn: 'Sign In',
@@ -28,6 +31,21 @@ export const en: TranslationDictionary = {
     subtext:
       "Check yesterday's winning results, grab today's live predictions, or plan ahead with tomorrow's early tips.",
     vipLoungeLink: 'VIP Lounge',
+  },
+  dates: { yesterday: 'Yesterday', today: 'Today', tomorrow: 'Tomorrow', calendar: 'Calendar', tips: 'tips', audit: 'Audit', upcoming: 'Upcoming' },
+  vip: {
+    badge: 'VIP LOUNGE ELITE CLUB', title: 'The Algorithmic VIP Lounge',
+    description: 'High-confidence predictions and match analysis. Betting involves risk; no outcome is guaranteed.',
+    historical: 'Historical results', bankroll: 'Bankroll guidance', liveFeed: 'Match feed',
+    restricted: 'VIP Lounge access', restrictedDescription: 'An active VIP membership is required to view VIP selections.',
+    viewPlans: 'View membership plans', loading: 'Loading VIP selections', noSelections: 'No VIP selections for this date',
+    noSelectionsDescription: 'Choose another date to review available picks and settled outcomes.',
+    topPick: 'Featured VIP selection', topPickBadge: 'Highest model confidence',
+  },
+  predictionCard: {
+    won: 'WON', lost: 'LOST', pending: 'PENDING', void: 'VOID', vip: 'VIP', free: 'FREE', locked: 'VIP PREDICTION LOCKED',
+    lockedDescription: 'This selection is reserved for active VIP members.', upgrade: 'View plans', market: 'Prediction',
+    probability: 'Model Probability', rationale: 'AI Match Rationale', analytics: 'Match analytics, form & telemetry',
   },
   insights: {
     topBadge: 'Expert Betting Insights',

@@ -3,7 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/app/actions/auth';
 import { createAdminClient } from '@/utils/supabase/admin';
-import { AccountModerationStatus, PolicyPage } from '@/lib/types';
+import { Buffer } from 'node:buffer';
+import { AccountModerationStatus, PolicyPage, Testimonial } from '@/lib/types';
 
 async function requireAdmin() {
   const { user, profile } = await getCurrentUser();
@@ -16,8 +17,12 @@ export async function submitTestimonialAction(formData: FormData) {
   if (!user || !profile) return { success: false, error: 'Sign in to submit a testimonial.' };
   const content = String(formData.get('content') || '').trim();
   const rating = Number(formData.get('rating'));
+  const authorName = String(formData.get('author_name') || '').trim();
+  const requestedLocale = String(formData.get('locale') || 'en');
+  const sourceLocale = (['en', 'fr', 'es', 'pt'].includes(requestedLocale) ? requestedLocale : 'en') as 'en' | 'fr' | 'es' | 'pt';
   const publicConsent = formData.get('public_consent') === 'true';
-  const authorName = (profile.full_name || profile.email.split('@')[0]).trim().slice(0, 80);
+  const avatarUrl = profile.avatar_url || null;
+  if (authorName.length < 2 || authorName.length > 80) return { success: false, error: 'Display name must be 2 to 80 characters.' };
   if (content.length < 20 || content.length > 1500) return { success: false, error: 'Review must be 20 to 1,500 characters.' };
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) return { success: false, error: 'Choose a rating from 1 to 5.' };
   if (!publicConsent) return { success: false, error: 'Consent is required before a review can be published.' };
@@ -25,9 +30,12 @@ export async function submitTestimonialAction(formData: FormData) {
   const supabase = createAdminClient();
   const { error } = await supabase.from('testimonials').insert({
     user_id: user.id,
-    author_name: authorName,
+    author_name: authorName.slice(0, 80),
+    avatar_url: avatarUrl,
     role_title: 'SabiPredict Member',
     content,
+    source_locale: sourceLocale,
+    translations: { [sourceLocale]: { content } },
     rating,
     is_featured: false,
     status: 'pending',
@@ -43,6 +51,7 @@ export async function updateTestimonialAction(input: {
   status: 'pending' | 'approved' | 'rejected';
   is_featured: boolean;
   content: string;
+  translations?: Testimonial['translations'];
 }) {
   await requireAdmin();
   if (!/^[0-9a-f-]{36}$/i.test(input.id) || input.content.length < 20 || input.content.length > 1500) {
@@ -54,6 +63,7 @@ export async function updateTestimonialAction(input: {
     status: input.status,
     is_featured: featured,
     content: input.content.trim(),
+    translations: input.translations || {},
     updated_at: new Date().toISOString(),
   }).eq('id', input.id);
   if (error) return { success: false, error: 'Testimonial could not be updated.' };
@@ -278,7 +288,7 @@ export async function reviewAccountAppealAction(input: {
   return { success: true };
 }
 
-export async function savePolicyPageAction(input: Pick<PolicyPage, 'slug' | 'title' | 'content' | 'is_published'>) {
+export async function savePolicyPageAction(input: Pick<PolicyPage, 'slug' | 'title' | 'content' | 'translations' | 'is_published'>) {
   const admin = await requireAdmin();
   if (!['terms', 'privacy', 'affiliate-policy'].includes(input.slug) || input.title.trim().length < 3 || input.title.length > 120 || input.content.length > 30000) {
     return { success: false, error: 'Invalid policy content.' };
@@ -290,10 +300,46 @@ export async function savePolicyPageAction(input: Pick<PolicyPage, 'slug' | 'tit
   const { error } = await supabase.from('policy_pages').upsert({
     ...input,
     title: input.title.trim(),
+    translations: input.translations || {},
     updated_by: admin.id,
     updated_at: new Date().toISOString(),
   });
   revalidatePath('/admin');
   revalidatePath(`/${input.slug}`);
   return { success: !error, error: error?.message };
+}
+
+export async function uploadMemberAvatarAction(formData: FormData) {
+  const { user } = await getCurrentUser();
+  if (!user) return { success: false, error: 'Sign in to upload a profile photo.' };
+  const file = formData.get('file');
+  if (!(file instanceof File) || file.size === 0 || file.size > 2 * 1024 * 1024) {
+    return { success: false, error: 'Choose an image up to 2 MB.' };
+  }
+  const types: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+  const extension = types[file.type];
+  if (!extension) return { success: false, error: 'Use a JPG, PNG, or WebP image.' };
+
+  const supabase = createAdminClient();
+  const bucket = 'branding';
+  const { data: buckets } = await supabase.storage.listBuckets();
+  if (!buckets?.some((item) => item.name === bucket)) {
+    const { error: bucketError } = await supabase.storage.createBucket(bucket, { public: true, fileSizeLimit: 5 * 1024 * 1024, allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'] });
+    if (bucketError && !bucketError.message.toLowerCase().includes('already exists')) {
+      return { success: false, error: 'Image storage is unavailable.' };
+    }
+  }
+
+  const path = `member-avatars/${user.id}/${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage.from(bucket).upload(path, Buffer.from(await file.arrayBuffer()), { contentType: file.type, upsert: false });
+  if (error) return { success: false, error: 'Profile image upload failed.' };
+  const { data: publicUrl } = supabase.storage.from(bucket).getPublicUrl(path);
+  const { error: profileError } = await supabase.from('profiles').update({ avatar_url: publicUrl.publicUrl, updated_at: new Date().toISOString() }).eq('id', user.id);
+  if (profileError) {
+    await supabase.storage.from(bucket).remove([path]);
+    return { success: false, error: 'Profile image could not be saved.' };
+  }
+  revalidatePath('/testimonials');
+  revalidatePath('/');
+  return { success: true, url: publicUrl.publicUrl };
 }

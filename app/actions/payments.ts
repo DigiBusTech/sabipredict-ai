@@ -94,9 +94,9 @@ export async function uploadPaymentProofAction(formData: FormData): Promise<{
       success: true,
       url: publicUrlData.publicUrl,
     };
-  } catch (err: any) {
+  } catch (err) {
     console.error('uploadPaymentProofAction exception:', err);
-    return { success: false, error: err.message || 'File upload failed.' };
+    return { success: false, error: err instanceof Error ? err.message : 'File upload failed.' };
   }
 }
 

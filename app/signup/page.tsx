@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { 
   Activity, Lock, Mail, User, AlertCircle, CheckCircle2, 
-  ArrowRight, Eye, EyeOff, ShieldCheck, Check, Loader2 
+  ArrowRight, Eye, EyeOff, Check, Loader2
 } from 'lucide-react';
 import { signUpAction } from '@/app/actions/auth';
 

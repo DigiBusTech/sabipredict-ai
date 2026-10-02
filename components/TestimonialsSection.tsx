@@ -2,9 +2,11 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { MessageSquareQuote, Send, Star, X } from 'lucide-react';
-import { submitTestimonialAction } from '@/app/actions/growth';
+import { submitTestimonialAction, uploadMemberAvatarAction } from '@/app/actions/growth';
 import { Testimonial, UserProfile } from '@/lib/types';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 export default function TestimonialsSection({
   testimonials,
@@ -19,8 +21,12 @@ export default function TestimonialsSection({
   const [rating, setRating] = useState(5);
   const [content, setContent] = useState('');
   const [publicConsent, setPublicConsent] = useState(false);
+  const [authorName, setAuthorName] = useState(userProfile?.full_name || '');
+  const [avatarUrl, setAvatarUrl] = useState(userProfile?.avatar_url || '');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const { locale } = useTranslation();
 
   async function submitReview(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -28,7 +34,9 @@ export default function TestimonialsSection({
     const formData = new FormData();
     formData.set('content', content);
     formData.set('rating', String(rating));
+    formData.set('author_name', authorName);
     formData.set('public_consent', String(publicConsent));
+    formData.set('locale', locale);
     const result = await submitTestimonialAction(formData);
     setSubmitting(false);
     if (!result.success) {
@@ -39,6 +47,25 @@ export default function TestimonialsSection({
     setContent('');
     setPublicConsent(false);
     setMessage('Your review is submitted for moderation.');
+  }
+
+  async function uploadAvatar(file?: File) {
+    if (!file) return;
+    if (!publicConsent) {
+      setMessage('Agree to the publication terms before uploading a public profile photo.');
+      return;
+    }
+    setUploadingAvatar(true);
+    const formData = new FormData();
+    formData.set('file', file);
+    const result = await uploadMemberAvatarAction(formData);
+    setUploadingAvatar(false);
+    if (!result.success || !result.url) {
+      setMessage(result.error || 'Profile photo upload failed.');
+      return;
+    }
+    setAvatarUrl(result.url);
+    setMessage('Profile photo saved.');
   }
 
   return (
@@ -73,8 +100,10 @@ export default function TestimonialsSection({
               </div>
               <p className="mt-3 flex-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-200">“{testimonial.content}”</p>
               <div className="mt-4 border-t border-[#25314D] pt-3">
-                <p className="text-xs font-black text-white">{testimonial.author_name}</p>
-                <p className="mt-0.5 text-[10px] text-slate-400">{testimonial.role_title}</p>
+                <div className="flex items-center gap-2.5">
+                  {testimonial.avatar_url ? <Image unoptimized src={testimonial.avatar_url} alt="" width={36} height={36} className="h-9 w-9 rounded-full object-cover" /> : <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#20304D] text-xs font-black text-[#48CAE4]">{testimonial.author_name.slice(0, 1).toUpperCase()}</span>}
+                  <div><p className="text-xs font-black text-white">{testimonial.author_name}</p><p className="mt-0.5 text-[10px] text-slate-400">{testimonial.role_title}</p></div>
+                </div>
               </div>
             </article>
           ))}
@@ -91,6 +120,16 @@ export default function TestimonialsSection({
               <button type="button" onClick={() => setModalOpen(false)} disabled={submitting} aria-label="Close review form" className="rounded-md p-2 text-slate-400 hover:bg-[#1C2541] hover:text-white"><X className="h-4 w-4" /></button>
             </div>
             <form onSubmit={submitReview} className="space-y-4 p-5">
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                <label className="block text-xs font-bold text-slate-300">Display name
+                  <input required minLength={2} maxLength={80} value={authorName} onChange={(event) => setAuthorName(event.target.value)} className="mt-1.5 min-h-10 w-full rounded-lg border border-[#34415E] bg-[#0B132B] px-3 text-sm text-white outline-none focus:border-[#48CAE4]" />
+                </label>
+                <label className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#34415E] px-3 text-xs font-bold text-slate-200 hover:border-[#48CAE4]">
+                  {avatarUrl ? <Image unoptimized src={avatarUrl} alt="Profile photo preview" width={28} height={28} className="h-7 w-7 rounded-full object-cover" /> : <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#20304D] text-[10px] font-black text-[#48CAE4]">{authorName.slice(0, 1).toUpperCase() || '?'}</span>}
+                  {uploadingAvatar ? 'Uploading...' : 'Choose photo'}
+                  <input type="file" accept="image/png,image/jpeg,image/webp" disabled={uploadingAvatar} onChange={(event) => void uploadAvatar(event.target.files?.[0])} className="sr-only" />
+                </label>
+              </div>
               <fieldset>
                 <legend className="text-xs font-bold text-slate-300">Your rating</legend>
                 <div className="mt-2 flex gap-1">
@@ -105,8 +144,8 @@ export default function TestimonialsSection({
                 <textarea required minLength={20} maxLength={1500} rows={5} value={content} onChange={(event) => setContent(event.target.value)} placeholder="What has your experience been like?" className="mt-1.5 w-full rounded-lg border border-[#34415E] bg-[#0B132B] p-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-[#48CAE4]" />
                 <span className="mt-1 block text-right text-[10px] font-normal text-slate-500">{content.length}/1500</span>
               </label>
-              <label className="flex items-start gap-2 rounded-lg border border-[#34415E] bg-[#0B132B] p-3 text-[11px] leading-relaxed text-slate-300"><input type="checkbox" checked={publicConsent} onChange={(event) => setPublicConsent(event.target.checked)} required className="mt-0.5 accent-[#48CAE4]" /><span>I agree that my account name and review may be published if approved. I understand reviews are personal opinions, not guarantees of betting outcomes.</span></label>
-              <button type="submit" disabled={submitting || content.trim().length < 20 || !publicConsent} className="flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#48CAE4] px-4 text-xs font-black text-[#0B132B] disabled:opacity-50">
+              <label className="flex items-start gap-2 rounded-lg border border-[#34415E] bg-[#0B132B] p-3 text-[11px] leading-relaxed text-slate-300"><input type="checkbox" checked={publicConsent} onChange={(event) => setPublicConsent(event.target.checked)} required className="mt-0.5 accent-[#48CAE4]" /><span>I agree that my display name, profile photo, and review may be published if approved. I understand reviews are personal opinions, not guarantees of betting outcomes.</span></label>
+              <button type="submit" disabled={submitting || uploadingAvatar || content.trim().length < 20 || authorName.trim().length < 2 || !publicConsent} className="flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#48CAE4] px-4 text-xs font-black text-[#0B132B] disabled:opacity-50">
                 <Send className="h-3.5 w-3.5" /> {submitting ? 'Submitting...' : 'Submit for review'}
               </button>
             </form>

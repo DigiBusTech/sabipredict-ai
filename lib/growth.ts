@@ -21,12 +21,17 @@ function maskEmail(email?: string | null) {
   return domain ? `${local.slice(0, 1)}***@${domain}` : 'Member';
 }
 
-export async function getApprovedTestimonials(featuredOnly = false): Promise<Testimonial[]> {
+export async function getApprovedTestimonials(featuredOnly = false, locale: import('@/lib/i18n/types').Locale = 'en'): Promise<Testimonial[]> {
   const supabase = createAdminClient();
   let query = supabase.from('testimonials').select('*').eq('status', 'approved');
   if (featuredOnly) query = query.eq('is_featured', true);
   const { data, error } = await query.order('created_at', { ascending: false });
-  return error ? [] : (data as Testimonial[]) || [];
+  if (error || !data) return [];
+  return (data as Testimonial[]).map((item) => ({
+    ...item,
+    content: item.translations?.[locale]?.content || item.content,
+    role_title: item.translations?.[locale]?.role_title || item.role_title,
+  }));
 }
 
 export async function getAdminTestimonials(): Promise<Testimonial[]> {
@@ -154,10 +159,13 @@ export async function getUserAppeals(userId: string): Promise<AccountAppeal[]> {
   return error ? [] : (data as AccountAppeal[]) || [];
 }
 
-export async function getPolicyPage(slug: PolicyPage['slug']): Promise<PolicyPage | null> {
+export async function getPolicyPage(slug: PolicyPage['slug'], locale: import('@/lib/i18n/types').Locale = 'en'): Promise<PolicyPage | null> {
   const supabase = createAdminClient();
   const { data, error } = await supabase.from('policy_pages').select('*').eq('slug', slug).eq('is_published', true).maybeSingle();
-  return error ? null : (data as PolicyPage | null);
+  if (error || !data) return null;
+  const page = data as PolicyPage;
+  const translation = page.translations?.[locale];
+  return { ...page, title: translation?.title || page.title, content: translation?.content || page.content };
 }
 
 export async function getAdminPolicyPages(): Promise<PolicyPage[]> {

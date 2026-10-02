@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import { 
-  CheckSquare, BookOpen, Key, Cpu, CreditCard, 
+  CheckSquare, BookOpen, Key, Cpu, CreditCard, LayoutDashboard,
   Palette, Bell, ShieldCheck, MessageSquareQuote, Users, Wallet, FileText, AlertTriangle
+  ,Megaphone, Search
 } from 'lucide-react';
 import { 
   Prediction, BlogPost, SportsmonksSettings, 
@@ -11,6 +12,7 @@ import {
   DataProviderSettings, SiteBrandingSettings, UserProfile,
   SubscriptionReminderLog, LeagueOption, DataProviderType, WinningTicket,
   Testimonial, AffiliatePayoutRequest, AffiliateSettings, AccountAppeal, AdminManagedUser, PolicyPage
+  ,HomepageContent, PromoSlot, PageSeoMetadata
 } from '@/lib/types';
 import PredictionsTab from './PredictionsTab';
 import BlogTab from './BlogTab';
@@ -27,6 +29,9 @@ import AffiliatesTab from './AffiliatesTab';
 import AppealsTab from './AppealsTab';
 import UsersTab from './UsersTab';
 import PoliciesTab from './PoliciesTab';
+import AdminOverview from './AdminOverview';
+import ContentManagementTab from './ContentManagementTab';
+import SeoManagementTab from './SeoManagementTab';
 
 interface AdminDashboardClientProps {
   predictions: Prediction[];
@@ -50,6 +55,10 @@ interface AdminDashboardClientProps {
   appeals?: AccountAppeal[];
   managedUsers?: AdminManagedUser[];
   policyPages?: PolicyPage[];
+  asOf: string;
+  homepageContent?: HomepageContent;
+  promoSlots?: PromoSlot[];
+  seoMetadata?: PageSeoMetadata[];
 }
 
 export default function AdminDashboardClient({
@@ -74,10 +83,14 @@ export default function AdminDashboardClient({
   appeals = [],
   managedUsers = [],
   policyPages = [],
+  asOf,
+  homepageContent = { translations: {}, hero_image_url: '', hero_image_alt: {} },
+  promoSlots = [],
+  seoMetadata = [],
 }: AdminDashboardClientProps) {
   const [activeTab, setActiveTab] = useState<
-    'predictions' | 'blog' | 'api' | 'ai' | 'plans' | 'branding' | 'reminders' | 'pending-payments' | 'winning-tickets' | 'testimonials' | 'affiliates' | 'appeals' | 'users' | 'policies'
-  >('predictions');
+    'overview' | 'predictions' | 'blog' | 'api' | 'ai' | 'plans' | 'branding' | 'reminders' | 'pending-payments' | 'winning-tickets' | 'testimonials' | 'affiliates' | 'appeals' | 'users' | 'policies' | 'content' | 'seo'
+  >('overview');
 
   const pendingCount = predictions.filter((p) => p.status === 'pending').length;
   const pendingSubsCount = pendingSubscriptions.filter((s) => s.status === 'pending').length;
@@ -86,6 +99,7 @@ export default function AdminDashboardClient({
   const pendingPayoutsCount = affiliatePayouts.filter((payout) => payout.status === 'pending').length;
 
   const tabs = [
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'predictions', label: 'Predictions Moderation', icon: CheckSquare, badge: pendingCount },
     { id: 'pending-payments', label: 'Subscription Approvals', icon: ShieldCheck, badge: pendingSubsCount },
     { id: 'winning-tickets', label: 'Winning Tickets', icon: ShieldCheck, badge: pendingTicketsCount },
@@ -94,6 +108,8 @@ export default function AdminDashboardClient({
     { id: 'users', label: 'Users', icon: Users, badge: managedUsers.length },
     { id: 'appeals', label: 'Appeals', icon: AlertTriangle, badge: pendingAppealsCount },
     { id: 'policies', label: 'Policy Pages', icon: FileText },
+    { id: 'content', label: 'Home & promotions', icon: Megaphone },
+    { id: 'seo', label: 'SEO & sharing', icon: Search },
     { id: 'blog', label: 'Blog Management', icon: BookOpen, badge: posts.length },
     { id: 'api', label: 'API Management', icon: Key },
     { id: 'ai', label: 'AI & LLM Management', icon: Cpu },
@@ -103,9 +119,9 @@ export default function AdminDashboardClient({
   ] as const;
 
   return (
-    <div className="space-y-6">
-      {/* Dynamic Tab Navigation */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-[#1C2541] pb-3">
+    <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+      <aside className="h-fit rounded-xl border border-[#1C2541] bg-[#0D172F] p-2 lg:sticky lg:top-24">
+      <nav aria-label="Admin navigation" className="grid grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-1">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -113,14 +129,14 @@ export default function AdminDashboardClient({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
+              className={`flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-left text-[11px] font-bold transition-all ${
                 isActive
                   ? 'bg-[#48CAE4] text-[#0B132B] shadow-lg shadow-[#48CAE4]/20'
                   : 'bg-[#111C38] text-slate-300 hover:bg-[#1C2541] hover:text-white border border-[#1C2541]'
               }`}
             >
               <Icon className="h-4 w-4" />
-              <span>{tab.label}</span>
+                <span className="min-w-0 flex-1 truncate">{tab.label}</span>
               {'badge' in tab && tab.badge !== undefined && tab.badge > 0 && (
                 <span
                   className={`rounded-full px-1.5 py-0.2 text-[10px] font-black ${
@@ -133,10 +149,11 @@ export default function AdminDashboardClient({
             </button>
           );
         })}
-      </div>
+      </nav>
+      </aside>
 
-      {/* Tab Panels */}
-      <div>
+      <main className="min-w-0">
+        {activeTab === 'overview' && <AdminOverview users={managedUsers} predictions={predictions} payments={pendingSubscriptions} tickets={winningTickets} testimonials={testimonials} appeals={appeals} payouts={affiliatePayouts} posts={posts} asOf={asOf} />}
         {activeTab === 'predictions' && (
           <PredictionsTab
             predictions={predictions}
@@ -153,6 +170,8 @@ export default function AdminDashboardClient({
         {activeTab === 'users' && <UsersTab initialUsers={managedUsers} />}
         {activeTab === 'appeals' && <AppealsTab initialItems={appeals} />}
         {activeTab === 'policies' && <PoliciesTab initialPages={policyPages} />}
+        {activeTab === 'content' && <ContentManagementTab initialContent={homepageContent} initialPromos={promoSlots} />}
+        {activeTab === 'seo' && <SeoManagementTab initialItems={seoMetadata} />}
         {activeTab === 'blog' && <BlogTab posts={posts} />}
         {activeTab === 'api' && (
           <ApiTab
@@ -168,7 +187,7 @@ export default function AdminDashboardClient({
         {activeTab === 'reminders' && (
           <RemindersTab vipProfiles={vipProfiles} reminderLogs={reminderLogs} />
         )}
-      </div>
+      </main>
     </div>
   );
 }

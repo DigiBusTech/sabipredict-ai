@@ -470,6 +470,19 @@ export default function PredictionsTab({
             </select>
           </div>
           <textarea name="ai_analysis" placeholder="Tactical quantitative rationale..." rows={2} className="w-full rounded-xl bg-[#0B132B] border border-[#223156] p-2.5 text-white" />
+          <details className="rounded-xl border border-[#223156] bg-[#0B132B]/60 p-3">
+            <summary className="cursor-pointer text-xs font-bold text-[#48CAE4]">Optional French, Spanish, and Portuguese prediction text</summary>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              {(['fr', 'es', 'pt'] as const).map((locale) => (
+                <fieldset key={locale} className="space-y-2">
+                  <legend className="text-[10px] font-black uppercase text-slate-300">{locale}</legend>
+                  <input name={`${locale}_league`} placeholder="League" className="w-full rounded-lg border border-[#223156] bg-[#111C38] px-2 py-1.5 text-xs text-white" />
+                  <input name={`${locale}_market`} placeholder="Market" className="w-full rounded-lg border border-[#223156] bg-[#111C38] px-2 py-1.5 text-xs text-white" />
+                  <textarea name={`${locale}_analysis`} rows={3} placeholder="Analysis" className="w-full rounded-lg border border-[#223156] bg-[#111C38] p-2 text-xs text-white" />
+                </fieldset>
+              ))}
+            </div>
+          </details>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setShowManualForm(false)} className="px-3 py-1 text-slate-400">Cancel</button>
             <button type="submit" className="rounded-xl bg-[#48CAE4] px-4 py-1.5 font-bold text-[#0B132B]">Save</button>

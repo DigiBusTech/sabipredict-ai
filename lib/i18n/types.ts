@@ -19,7 +19,10 @@ export interface TranslationDictionary {
     pricing: string;
     vipLounge: string;
     blog: string;
+    reviews: string;
+    affiliate: string;
     mySubscription: string;
+    dashboard: string;
     adminPanel: string;
     downloadApp: string;
     signIn: string;
@@ -39,6 +42,46 @@ export interface TranslationDictionary {
     header: string;
     subtext: string;
     vipLoungeLink: string;
+  };
+  dates: {
+    yesterday: string;
+    today: string;
+    tomorrow: string;
+    calendar: string;
+    tips: string;
+    audit: string;
+    upcoming: string;
+  };
+  vip: {
+    badge: string;
+    title: string;
+    description: string;
+    historical: string;
+    bankroll: string;
+    liveFeed: string;
+    restricted: string;
+    restrictedDescription: string;
+    viewPlans: string;
+    loading: string;
+    noSelections: string;
+    noSelectionsDescription: string;
+    topPick: string;
+    topPickBadge: string;
+  };
+  predictionCard: {
+    won: string;
+    lost: string;
+    pending: string;
+    void: string;
+    vip: string;
+    free: string;
+    locked: string;
+    lockedDescription: string;
+    upgrade: string;
+    market: string;
+    probability: string;
+    rationale: string;
+    analytics: string;
   };
   insights: {
     topBadge: string;

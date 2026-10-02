@@ -7,7 +7,7 @@ import {
 } from '@/lib/db';
 import { fetchFixturesFromActiveProvider, fetchAvailableLeagues } from '@/lib/fixtures-service';
 import { evaluateFixtureWithAI } from '@/lib/ai-engine';
-import { PredictionOutcome, PredictionTier } from '@/lib/types';
+import { Prediction, PredictionOutcome, PredictionTier } from '@/lib/types';
 import { getCurrentUser } from './auth';
 
 async function verifyAdmin() {
@@ -86,6 +86,19 @@ export async function createManualPredictionAction(formData: FormData) {
   const odds = parseFloat((formData.get('odds') as string) || '1.35');
   const confidence_score = parseInt((formData.get('confidence_score') as string) || '80', 10);
   const ai_analysis = formData.get('ai_analysis') as string;
+  const translations = (['fr', 'es', 'pt'] as const).reduce<NonNullable<Prediction['translations']>>((all, locale) => {
+    const marketTranslation = String(formData.get(`${locale}_market`) || '').trim();
+    const leagueTranslation = String(formData.get(`${locale}_league`) || '').trim();
+    const analysisTranslation = String(formData.get(`${locale}_analysis`) || '').trim();
+    if (marketTranslation || leagueTranslation || analysisTranslation) {
+      all[locale] = {
+        ...(marketTranslation ? { market: marketTranslation } : {}),
+        ...(leagueTranslation ? { league: leagueTranslation } : {}),
+        ...(analysisTranslation ? { ai_analysis: analysisTranslation } : {}),
+      };
+    }
+    return all;
+  }, {});
   const tier = (formData.get('tier') as PredictionTier) || 'free';
   const status = (formData.get('status') as any) || 'approved';
 
@@ -97,7 +110,7 @@ export async function createManualPredictionAction(formData: FormData) {
     fixture_id: `manual-${Date.now()}`,
     home_team, away_team, league, country, match_date,
     match_time: match_time ? `${match_date}T${match_time}:00Z` : `${match_date}T18:00:00Z`,
-    market, odds, confidence_score, ai_analysis, tier, status, prediction_outcome: 'Pending',
+    market, odds, confidence_score, ai_analysis, translations, tier, status, prediction_outcome: 'Pending',
   }]);
 
   revalidatePath('/admin');

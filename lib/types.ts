@@ -1,3 +1,5 @@
+import type { Locale } from '@/lib/i18n/types';
+
 export type UserRole = 'admin' | 'vip_user' | 'free_user';
 export type SubscriptionStatus = 'active' | 'inactive' | 'canceled' | 'past_due';
 export type SubscriptionTier = 'free' | 'vip';
@@ -8,6 +10,7 @@ export interface UserProfile {
   id: string; // References auth.users(id)
   email: string;
   full_name?: string | null;
+  avatar_url?: string | null;
   role: UserRole;
   subscription_status: SubscriptionStatus;
   subscription_tier: SubscriptionTier;
@@ -21,6 +24,11 @@ export interface UserProfile {
 export type PredictionTier = 'free' | 'vip';
 export type PredictionStatus = 'pending' | 'approved' | 'rejected';
 export type PredictionOutcome = 'Pending' | 'Won' | 'Lost' | 'Void';
+export interface PredictionTranslation {
+  market?: string;
+  ai_analysis?: string;
+  league?: string;
+}
 
 export interface Prediction {
   id: string; // UUID
@@ -42,6 +50,7 @@ export interface Prediction {
   home_score?: number | null;
   away_score?: number | null;
   prediction_outcome: PredictionOutcome;
+  translations?: Partial<Record<Locale, PredictionTranslation>>;
   raw_data?: any; // Live odds, bookmaker values, and match insights from API provider
   starting_at?: string;
   result?: string;
@@ -78,6 +87,7 @@ export interface BlogPost {
   published: boolean;
   category?: string | null;
   read_time?: string | null;
+  translations?: Partial<Record<Locale, Partial<Pick<BlogPost, 'title' | 'excerpt' | 'content' | 'category'>>>>;
   created_at: string;
   updated_at?: string;
 }
@@ -158,6 +168,7 @@ export interface SubscriptionPlan {
   currency: string;
   interval: BillingInterval;
   tier?: VipPlanTier;
+  translations?: Partial<Record<Locale, { name?: string; features?: string[] }>>;
   features: string[];
   is_active: boolean;
   created_at?: string;
@@ -171,6 +182,8 @@ export interface Testimonial {
   avatar_url?: string | null;
   role_title: string;
   content: string;
+  translations?: Partial<Record<Locale, { content?: string; role_title?: string }>>;
+  source_locale?: Locale;
   rating: number;
   is_featured: boolean;
   status: TestimonialStatus;
@@ -271,6 +284,7 @@ export interface PolicyPage {
   slug: 'terms' | 'privacy' | 'affiliate-policy';
   title: string;
   content: string;
+  translations?: Partial<Record<Locale, { title?: string; content?: string }>>;
   is_published: boolean;
   updated_at: string;
 }
@@ -280,6 +294,49 @@ export interface SiteBrandingSettings {
   site_tagline?: string;
   logo_url?: string;
   favicon_url?: string;
+  hero_image_url?: string;
+  hero_image_alt?: Partial<Record<Locale, string>>;
+}
+
+export interface HomepageCopy {
+  eyebrow: string;
+  headline: string;
+  headline_highlight: string;
+  description: string;
+  accuracy_label: string;
+  verified_label: string;
+  banker_label: string;
+}
+
+export interface HomepageContent {
+  translations: Partial<Record<Locale, Partial<HomepageCopy>>>;
+  hero_image_url: string;
+  hero_image_alt: Partial<Record<Locale, string>>;
+}
+
+export interface PageSeoMetadata {
+  path: string;
+  title: string;
+  description: string;
+  keywords: string[];
+  canonical_url?: string | null;
+  open_graph_image_url?: string | null;
+  no_index: boolean;
+  translations?: Partial<Record<Locale, { title?: string; description?: string }>>;
+  updated_at?: string;
+}
+
+export interface PromoSlot {
+  id: string;
+  name: string;
+  placement: 'home-hero' | 'home-feed' | 'blog-sidebar' | 'pricing-banner';
+  translations: Partial<Record<Locale, { title?: string; body?: string; cta?: string }>>;
+  image_url?: string | null;
+  target_url?: string | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  is_active: boolean;
+  sort_order: number;
 }
 
 export type SubscriptionReminderStage = '5_days' | '3_days' | 'exact_day' | 'manual';

@@ -6,11 +6,22 @@ import HomeBlogSection from '@/components/HomeBlogSection';
 import TestimonialsSection from '@/components/TestimonialsSection';
 import { getCurrentUserProfile, getBlogPosts } from '@/lib/db';
 import { getApprovedTestimonials } from '@/lib/growth';
+import { getRequestLocale } from '@/lib/i18n/server';
+import { getHomepageContent } from '@/lib/site-content';
+import { getActivePromoSlots } from '@/lib/site-content';
+import PromoSlotCard from '@/components/PromoSlotCard';
+import ScrollReveal from '@/components/ScrollReveal';
 
 export default async function HomePage() {
-  const profile = await getCurrentUserProfile();
-  const posts = await getBlogPosts(true);
-  const testimonials = await getApprovedTestimonials(true);
+  const locale = await getRequestLocale();
+  const [profile, posts, testimonials, homepageContent, heroPromos, feedPromos] = await Promise.all([
+    getCurrentUserProfile(),
+    getBlogPosts(true, locale),
+    getApprovedTestimonials(true, locale),
+    getHomepageContent(),
+    getActivePromoSlots('home-hero'),
+    getActivePromoSlots('home-feed'),
+  ]);
 
   const now = new Date();
   const yest = new Date(now);
@@ -25,10 +36,11 @@ export default async function HomePage() {
   return (
     <div className="space-y-10 pb-16">
       {/* Hero Section */}
-      <HeroSection />
+      <ScrollReveal><HeroSection content={homepageContent} /></ScrollReveal>
+      {heroPromos.map((promo) => <ScrollReveal key={promo.id} className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8"><PromoSlotCard slot={promo} locale={locale} /></ScrollReveal>)}
 
       {/* Main Core Date-Filtered Predictions Section */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <ScrollReveal><section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <PredictionsSectionHeader />
 
         <PredictionsFeed
@@ -38,14 +50,16 @@ export default async function HomePage() {
           tomorrowStr={tomorrowStr}
           userProfile={profile}
         />
-      </section>
+      </section></ScrollReveal>
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      {feedPromos.map((promo) => <ScrollReveal key={promo.id} className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8"><PromoSlotCard slot={promo} locale={locale} /></ScrollReveal>)}
+
+      <ScrollReveal className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <TestimonialsSection testimonials={testimonials.slice(0, 3)} userProfile={profile} featuredOnly />
-      </div>
+      </ScrollReveal>
 
       {/* Featured Blog Insights Section */}
-      <HomeBlogSection posts={posts} />
+      <ScrollReveal><HomeBlogSection posts={posts} /></ScrollReveal>
     </div>
   );
 }

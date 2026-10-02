@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Calendar as CalendarIcon, History, Sparkles } from 'lucide-react';
 import CalendarPickerModal from './CalendarPickerModal';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 interface DateSelectorBarProps {
   selectedDate: string; // YYYY-MM-DD
@@ -22,6 +23,7 @@ export default function DateSelectorBar({
   predictionsCount,
 }: DateSelectorBarProps) {
   const [modalOpen, setModalOpen] = useState(false);
+  const { t, locale } = useTranslation();
 
   const isYesterday = selectedDate === yesterdayStr;
   const isToday = selectedDate === todayStr;
@@ -29,7 +31,7 @@ export default function DateSelectorBar({
   const isCustom = !isYesterday && !isToday && !isTomorrow;
 
   const parsedDate = new Date(selectedDate + 'T00:00:00');
-  const formattedFriendly = parsedDate.toLocaleDateString('en-US', {
+  const formattedFriendly = parsedDate.toLocaleDateString(locale, {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -54,7 +56,7 @@ export default function DateSelectorBar({
               }`}
             >
               <History className="h-3.5 w-3.5" />
-              <span>Yesterday</span>
+              <span>{t('dates.yesterday')}</span>
             </button>
 
             <button
@@ -66,7 +68,7 @@ export default function DateSelectorBar({
               }`}
             >
               <Sparkles className="h-3.5 w-3.5" />
-              <span>Today</span>
+              <span>{t('dates.today')}</span>
             </button>
 
             <button
@@ -77,7 +79,7 @@ export default function DateSelectorBar({
                   : 'text-slate-300 hover:bg-[#1C2541] hover:text-white border border-[#223156]'
               }`}
             >
-              <span>Tomorrow</span>
+              <span>{t('dates.tomorrow')}</span>
             </button>
           </div>
 
@@ -86,12 +88,12 @@ export default function DateSelectorBar({
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#0B132B] px-2.5 py-1 text-xs font-semibold text-[#48CAE4] border border-[#223156]">
                 {formattedFriendly}
-                {isPast && <span className="text-[10px] text-amber-400 font-normal">(Audit)</span>}
-                {isFuture && <span className="text-[10px] text-teal-400 font-normal">(Upcoming)</span>}
+                {isPast && <span className="text-[10px] text-amber-400 font-normal">({t('dates.audit')})</span>}
+                {isFuture && <span className="text-[10px] text-teal-400 font-normal">({t('dates.upcoming')})</span>}
               </span>
               {predictionsCount !== undefined && (
                 <span className="rounded-full bg-[#1C2541] border border-[#3A506B] px-2 py-0.5 text-[11px] font-bold text-slate-300">
-                  {predictionsCount} tips
+                  {predictionsCount} {t('dates.tips')}
                 </span>
               )}
             </div>
@@ -105,7 +107,7 @@ export default function DateSelectorBar({
               }`}
             >
               <CalendarIcon className="h-3.5 w-3.5 text-[#48CAE4]" />
-              <span>Calendar</span>
+              <span>{t('dates.calendar')}</span>
             </button>
           </div>
         </div>

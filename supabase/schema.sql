@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     subscription_status TEXT NOT NULL DEFAULT 'inactive' CHECK (subscription_status IN ('active', 'inactive', 'canceled', 'past_due')),
     subscription_tier TEXT NOT NULL DEFAULT 'free' CHECK (subscription_tier IN ('free', 'vip')),
     vip_until TIMESTAMPTZ,
+    avatar_url TEXT,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
@@ -110,6 +111,7 @@ CREATE TABLE IF NOT EXISTS public.predictions (
     prediction_outcome TEXT NOT NULL DEFAULT 'Pending' CHECK (prediction_outcome IN ('Pending', 'Won', 'Lost', 'Void')),
     result TEXT NOT NULL DEFAULT 'pending',
     raw_data JSONB DEFAULT '{}'::jsonb,
+    translations JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
@@ -162,6 +164,7 @@ CREATE TABLE IF NOT EXISTS public.subscription_plans (
     currency TEXT NOT NULL DEFAULT 'USD',
     interval TEXT NOT NULL DEFAULT 'monthly' CHECK (interval IN ('weekly', 'monthly', 'yearly', 'lifetime')),
     tier TEXT NOT NULL DEFAULT 'standard' CHECK (tier IN ('free', 'standard', 'gold', 'platinum')),
+    translations JSONB NOT NULL DEFAULT '{}'::jsonb,
     features JSONB NOT NULL DEFAULT '[]'::jsonb,
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
@@ -211,6 +214,8 @@ CREATE TABLE IF NOT EXISTS public.pending_subscriptions (
 );
 
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS current_plan_id TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE public.blog_posts ADD COLUMN IF NOT EXISTS translations JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 CREATE TABLE IF NOT EXISTS public.testimonials (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -219,6 +224,8 @@ CREATE TABLE IF NOT EXISTS public.testimonials (
     avatar_url TEXT,
     role_title TEXT NOT NULL DEFAULT 'SabiPredict Member' CHECK (char_length(role_title) <= 100),
     content TEXT NOT NULL CHECK (char_length(content) BETWEEN 20 AND 1500),
+    translations JSONB NOT NULL DEFAULT '{}'::jsonb,
+    source_locale TEXT NOT NULL DEFAULT 'en' CHECK (source_locale IN ('en', 'fr', 'es', 'pt')),
     rating SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
     is_featured BOOLEAN NOT NULL DEFAULT false,
     status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
@@ -311,11 +318,69 @@ CREATE TABLE IF NOT EXISTS public.policy_pages (
     updated_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE public.policy_pages ADD COLUMN IF NOT EXISTS translations JSONB NOT NULL DEFAULT '{}'::jsonb;
 INSERT INTO public.policy_pages (slug, title, content, is_published) VALUES
     ('terms', 'Terms and Conditions', '', false),
     ('privacy', 'Privacy Policy', '', false),
     ('affiliate-policy', 'Affiliate Policy', '', false)
 ON CONFLICT (slug) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS public.homepage_content (
+    id BOOLEAN PRIMARY KEY DEFAULT true CHECK (id),
+    translations JSONB NOT NULL DEFAULT '{}'::jsonb,
+    hero_image_url TEXT,
+    hero_image_alt JSONB NOT NULL DEFAULT '{}'::jsonb,
+    updated_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+INSERT INTO public.homepage_content (id) VALUES (true) ON CONFLICT (id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS public.seo_metadata (
+    path TEXT PRIMARY KEY CHECK (path LIKE '/%'),
+    title TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    keywords TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+    canonical_url TEXT,
+    open_graph_image_url TEXT,
+    translations JSONB NOT NULL DEFAULT '{}'::jsonb,
+    no_index BOOLEAN NOT NULL DEFAULT false,
+    updated_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.promo_slots (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL CHECK (char_length(name) BETWEEN 2 AND 100),
+    placement TEXT NOT NULL CHECK (placement IN ('home-hero', 'home-feed', 'blog-sidebar', 'pricing-banner')),
+    translations JSONB NOT NULL DEFAULT '{}'::jsonb,
+    image_url TEXT,
+    target_url TEXT,
+    starts_at TIMESTAMPTZ,
+    ends_at TIMESTAMPTZ,
+    is_active BOOLEAN NOT NULL DEFAULT false,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    updated_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CHECK (target_url IS NULL OR target_url ~ '^https?://')
+);
+CREATE INDEX IF NOT EXISTS idx_promo_slots_active_dates ON public.promo_slots(placement, is_active, starts_at, ends_at, sort_order);
+INSERT INTO public.seo_metadata (path, title, description, no_index) VALUES
+    ('/', 'SabiPredict AI | Football Intelligence', 'AI-powered football analytics, predictions, and match insights.', false),
+    ('/predictions', 'Football Predictions | SabiPredict AI', 'Date-filtered football predictions and settled outcomes.', false),
+    ('/vip', 'VIP Lounge | SabiPredict AI', 'VIP football predictions and match analytics.', false),
+    ('/pricing', 'Membership Plans | SabiPredict AI', 'Compare SabiPredict AI membership plans and billing intervals.', false),
+    ('/blog', 'Football Strategy & News | SabiPredict AI', 'Tactical breakdowns, quantitative tutorials, and match previews.', false),
+    ('/testimonials', 'Member Reviews | SabiPredict AI', 'Read member experiences and share your own review.', false),
+    ('/terms', 'Terms and Conditions | SabiPredict AI', 'Terms for SabiPredict AI services and memberships.', false),
+    ('/privacy', 'Privacy Policy | SabiPredict AI', 'How SabiPredict AI handles account and site data.', false),
+    ('/affiliate-policy', 'Affiliate Policy | SabiPredict AI', 'Referral eligibility, commission timing, and payout terms.', false),
+    ('/account', 'My Account | SabiPredict AI', 'Manage your SabiPredict AI account and membership.', true),
+    ('/login', 'Sign In | SabiPredict AI', 'Sign in to your SabiPredict AI account.', true),
+    ('/signup', 'Create an Account | SabiPredict AI', 'Create a SabiPredict AI account.', true),
+    ('/vip/affiliate', 'Affiliate Program | SabiPredict AI', 'Referral dashboard for active members.', true),
+    ('/support/appeal', 'Account Appeal | SabiPredict AI', 'Account review and appeal center.', true),
+    ('/admin', 'Admin | SabiPredict AI', 'SabiPredict AI administration.', true)
+ON CONFLICT (path) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS public.winning_tickets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -374,6 +439,9 @@ ALTER TABLE public.affiliate_payout_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.account_moderation ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.account_appeals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.policy_pages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.homepage_content ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.seo_metadata ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.promo_slots ENABLE ROW LEVEL SECURITY;
 
 
 -- PROFILES POLICIES
@@ -530,6 +598,18 @@ DROP POLICY IF EXISTS "Public can view published policies" ON public.policy_page
 CREATE POLICY "Public can view published policies" ON public.policy_pages FOR SELECT USING (is_published = true OR public.is_admin());
 DROP POLICY IF EXISTS "Admins manage policies" ON public.policy_pages;
 CREATE POLICY "Admins manage policies" ON public.policy_pages FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Public can read homepage content" ON public.homepage_content;
+CREATE POLICY "Public can read homepage content" ON public.homepage_content FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admins manage homepage content" ON public.homepage_content;
+CREATE POLICY "Admins manage homepage content" ON public.homepage_content FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Public can read indexable page SEO" ON public.seo_metadata;
+CREATE POLICY "Public can read indexable page SEO" ON public.seo_metadata FOR SELECT USING (no_index = false);
+DROP POLICY IF EXISTS "Admins manage SEO metadata" ON public.seo_metadata;
+CREATE POLICY "Admins manage SEO metadata" ON public.seo_metadata FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Public can view scheduled promo slots" ON public.promo_slots;
+CREATE POLICY "Public can view scheduled promo slots" ON public.promo_slots FOR SELECT USING (is_active = true AND (starts_at IS NULL OR starts_at <= now()) AND (ends_at IS NULL OR ends_at > now()));
+DROP POLICY IF EXISTS "Admins manage promo slots" ON public.promo_slots;
+CREATE POLICY "Admins manage promo slots" ON public.promo_slots FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 CREATE OR REPLACE FUNCTION public.approve_subscription_with_commission(p_pending_id UUID, p_admin_id UUID, p_admin_notes TEXT DEFAULT NULL)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$

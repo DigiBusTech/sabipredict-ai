@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { 
   TrendingUp, Crown, BookOpen, ShieldCheck, Menu, X, 
@@ -32,9 +33,9 @@ export default function Header({
     { href: '/pricing', label: t('nav.pricing', 'Pricing'), icon: CreditCard },
     { href: '/vip', label: t('nav.vipLounge', 'VIP Lounge'), icon: Crown },
     { href: '/blog', label: t('nav.blog', 'Blog'), icon: BookOpen },
-    { href: '/testimonials', label: 'Reviews', icon: MessageSquareQuote },
-    ...(userProfile ? [{ href: '/account', label: t('nav.mySubscription', 'My Subscription'), icon: User }] : []),
-    ...(userProfile?.role === 'vip_user' && userProfile.subscription_status === 'active' ? [{ href: '/vip/affiliate', label: 'Affiliate', icon: Users }] : []),
+    { href: '/testimonials', label: t('nav.reviews', 'Reviews'), icon: MessageSquareQuote },
+    ...(userProfile ? [{ href: '/account', label: t('nav.dashboard', 'Dashboard'), icon: User }] : []),
+    ...(userProfile?.role === 'vip_user' && userProfile.subscription_status === 'active' ? [{ href: '/vip/affiliate', label: t('nav.affiliate', 'Affiliate'), icon: Users }] : []),
     ...(isAdmin ? [{ href: '/admin', label: t('nav.adminPanel', 'Admin Panel'), icon: ShieldCheck, admin: true }] : []),
   ];
 
@@ -45,11 +46,7 @@ export default function Header({
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 group">
           {branding?.logo_url ? (
-            <img
-              src={branding.logo_url}
-              alt={siteTitle}
-              className="h-8 max-h-8 max-w-40 object-contain"
-            />
+            <Image unoptimized src={branding.logo_url} alt={siteTitle} width={160} height={32} className="h-8 max-h-8 max-w-40 object-contain" />
           ) : (
             <>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-tr from-[#3A506B] to-[#48CAE4] text-[#0B132B] shadow-sm">

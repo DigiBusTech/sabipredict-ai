@@ -1,9 +1,11 @@
 import { notFound } from 'next/navigation';
 import { getPolicyPage } from '@/lib/growth';
 import { PolicyPage } from '@/lib/types';
+import { getRequestLocale } from '@/lib/i18n/server';
 
 export default async function PolicyPageView({ slug }: { slug: PolicyPage['slug'] }) {
-  const page = await getPolicyPage(slug);
+  const locale = await getRequestLocale();
+  const page = await getPolicyPage(slug, locale);
   if (!page) notFound();
 
   return (

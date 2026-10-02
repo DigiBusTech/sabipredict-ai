@@ -6,7 +6,10 @@ export const pt: TranslationDictionary = {
     pricing: 'Planos',
     vipLounge: 'Área VIP',
     blog: 'Blog',
+    reviews: 'Avaliações',
+    affiliate: 'Afiliados',
     mySubscription: 'Minha Assinatura',
+    dashboard: 'Painel',
     adminPanel: 'Painel Admin',
     downloadApp: 'Baixar App',
     signIn: 'Entrar',
@@ -28,6 +31,21 @@ export const pt: TranslationDictionary = {
     subtext:
       'Confira os resultados vencedores de ontem, veja as previsões de hoje ou planeje com as dicas de amanhã.',
     vipLoungeLink: 'Área VIP',
+  },
+  dates: { yesterday: 'Ontem', today: 'Hoje', tomorrow: 'Amanhã', calendar: 'Calendário', tips: 'palpites', audit: 'Histórico', upcoming: 'Próximo' },
+  vip: {
+    badge: 'CLUBE ÁREA VIP', title: 'Área VIP algorítmica',
+    description: 'Previsões de alta confiança e análises de partidas. Apostas envolvem riscos; nenhum resultado é garantido.',
+    historical: 'Resultados históricos', bankroll: 'Gestão de banca', liveFeed: 'Partidas ao vivo',
+    restricted: 'Acesso à Área VIP', restrictedDescription: 'É necessária uma assinatura VIP ativa para ver as seleções VIP.',
+    viewPlans: 'Ver planos', loading: 'Carregando seleções VIP', noSelections: 'Sem seleções VIP para esta data',
+    noSelectionsDescription: 'Escolha outra data para consultar previsões e resultados.',
+    topPick: 'Seleção VIP em destaque', topPickBadge: 'Maior confiança do modelo',
+  },
+  predictionCard: {
+    won: 'GANHA', lost: 'PERDIDA', pending: 'PENDENTE', void: 'ANULADA', vip: 'VIP', free: 'GRÁTIS', locked: 'PREVISÃO VIP BLOQUEADA',
+    lockedDescription: 'Esta seleção é reservada para membros VIP ativos.', upgrade: 'Ver planos', market: 'Mercado',
+    probability: 'Probabilidade do modelo', rationale: 'Análise da partida por IA', analytics: 'Estatísticas, forma e dados',
   },
   insights: {
     topBadge: 'Dicas e Análises de Especialistas',

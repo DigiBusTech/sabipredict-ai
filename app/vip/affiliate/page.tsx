@@ -3,11 +3,15 @@ import { redirect } from 'next/navigation';
 import { getCurrentUserProfile } from '@/lib/db';
 import { getAffiliateDashboard, hasActiveVipMembership } from '@/lib/growth';
 import AffiliateDashboard from '@/components/AffiliateDashboard';
+import { getRequestLocale } from '@/lib/i18n/server';
+import { getPageMetadata } from '@/lib/site-content';
 
-export const metadata = {
-  title: 'Affiliate Program | SabiPredict AI',
-  description: 'Share SabiPredict AI and track commissions from verified referred subscriptions.',
-};
+export async function generateMetadata() {
+  return getPageMetadata('/vip/affiliate', await getRequestLocale(), {
+    title: 'Affiliate Program | SabiPredict AI',
+    description: 'Share SabiPredict AI and track commissions from verified referred subscriptions.',
+  });
+}
 
 export default async function AffiliatePage() {
   const profile = await getCurrentUserProfile();
