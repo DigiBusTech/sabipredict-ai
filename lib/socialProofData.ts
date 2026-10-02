@@ -276,6 +276,7 @@ let lastGeneratedId = 0;
 let lastCountryIndex = -1;
 let lastNameIndex = -1;
 let lastActivityIndex = -1;
+let lastActivityType: ActivityTemplate['iconType'] | null = null;
 
 /**
  * Generates a randomized, realistic social proof notification.
@@ -301,13 +302,17 @@ export function generateRandomSocialProof(): SocialProofNotification {
   lastNameIndex = nameIdx;
   const name = NAMES[nameIdx];
 
-  // Pick unique activity
-  let actIdx = Math.floor(Math.random() * ACTIVITIES.length);
-  if (actIdx === lastActivityIndex) {
-    actIdx = (actIdx + 1) % ACTIVITIES.length;
-  }
+  // Alternate activity types while choosing a random template within each type.
+  const availableActivities = ACTIVITIES
+    .map((activity, index) => ({ activity, index }))
+    .filter(({ activity, index }) =>
+      activity.iconType !== lastActivityType && index !== lastActivityIndex
+    );
+  const selectedActivity = availableActivities[Math.floor(Math.random() * availableActivities.length)];
+  const actIdx = selectedActivity.index;
   lastActivityIndex = actIdx;
-  const activity = ACTIVITIES[actIdx];
+  const activity = selectedActivity.activity;
+  lastActivityType = activity.iconType;
 
   // Pick fresh time indicator
   const timeIdx = Math.floor(Math.random() * TIME_INDICATORS.length);

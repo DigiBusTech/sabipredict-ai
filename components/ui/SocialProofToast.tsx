@@ -5,112 +5,145 @@ import { usePathname } from 'next/navigation';
 import { Crown, TrendingUp, X } from 'lucide-react';
 import { generateRandomSocialProof, SocialProofNotification } from '@/lib/socialProofData';
 
+const INITIAL_DELAY_MS = 8_000;
+const DISPLAY_DURATION_MS = 5_500;
+const MIN_INTERVAL_MS = 25_000;
+const MAX_INTERVAL_MS = 40_000;
+
+type PauseReason = 'pointer' | 'focus' | 'hidden' | 'modal';
+
 export default function SocialProofToast() {
   const pathname = usePathname();
   const [notification, setNotification] = useState<SocialProofNotification | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissedForSession, setIsDismissedForSession] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerDeadlineRef = useRef<number | null>(null);
+  const remainingTimeRef = useRef<number | null>(null);
+  const scheduledActionRef = useRef<(() => void) | null>(null);
+  const pauseReasonsRef = useRef(new Set<PauseReason>());
+  const dismissedRef = useRef(false);
+  const showNextRef = useRef<() => void>(() => {});
 
-  const dismissTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const nextToastTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Automatically disable across all admin routes
   const isAdminRoute = Boolean(pathname?.startsWith('/admin'));
 
-  // Check session storage on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const dismissed = sessionStorage.getItem('sabipredicts_hide_social_proof') === 'true';
-        if (dismissed) {
-          setIsDismissedForSession(true);
-        }
-      } catch {
-        // sessionStorage may be blocked in strict privacy modes
-      }
+    try {
+      dismissedRef.current = sessionStorage.getItem('sabipredicts_hide_social_proof') === 'true';
+    } catch {
+      dismissedRef.current = false;
     }
   }, []);
 
-  // Dismiss logic for user clicking (✕)
+  const clearScheduledTimer = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = null;
+    timerDeadlineRef.current = null;
+    remainingTimeRef.current = null;
+    scheduledActionRef.current = null;
+  }, []);
+
+  const scheduleTimer = useCallback((action: () => void, delay: number) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = null;
+    scheduledActionRef.current = action;
+    remainingTimeRef.current = delay;
+
+    if (pauseReasonsRef.current.size > 0) return;
+
+    timerDeadlineRef.current = Date.now() + delay;
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      timerDeadlineRef.current = null;
+      remainingTimeRef.current = null;
+      const nextAction = scheduledActionRef.current;
+      scheduledActionRef.current = null;
+      nextAction?.();
+    }, delay);
+  }, []);
+
+  const pauseTimer = useCallback((reason: PauseReason) => {
+    const reasons = pauseReasonsRef.current;
+    if (reasons.has(reason)) return;
+    const wasRunning = reasons.size === 0;
+    reasons.add(reason);
+
+    if (wasRunning && timerRef.current) {
+      remainingTimeRef.current = Math.max(0, (timerDeadlineRef.current || Date.now()) - Date.now());
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+      timerDeadlineRef.current = null;
+    }
+  }, []);
+
+  const resumeTimer = useCallback((reason: PauseReason) => {
+    const reasons = pauseReasonsRef.current;
+    reasons.delete(reason);
+    if (reasons.size > 0 || !scheduledActionRef.current || remainingTimeRef.current === null) return;
+
+    scheduleTimer(scheduledActionRef.current, remainingTimeRef.current);
+  }, [scheduleTimer]);
+
+  const showNext = useCallback(() => {
+    setNotification(generateRandomSocialProof());
+    setIsVisible(true);
+    scheduleTimer(() => {
+      setIsVisible(false);
+      const nextInterval = Math.floor(Math.random() * (MAX_INTERVAL_MS - MIN_INTERVAL_MS + 1)) + MIN_INTERVAL_MS;
+      scheduleTimer(() => showNextRef.current(), nextInterval);
+    }, DISPLAY_DURATION_MS);
+  }, [scheduleTimer]);
+
+  useEffect(() => {
+    showNextRef.current = showNext;
+  }, [showNext]);
+
+  useEffect(() => {
+    if (isDismissedForSession || dismissedRef.current || isAdminRoute) return;
+    scheduleTimer(() => showNextRef.current(), INITIAL_DELAY_MS);
+    return clearScheduledTimer;
+  }, [clearScheduledTimer, isAdminRoute, isDismissedForSession, scheduleTimer]);
+
+  useEffect(() => {
+    const syncPageVisibility = () => {
+      if (document.visibilityState === 'hidden') pauseTimer('hidden');
+      else resumeTimer('hidden');
+    };
+
+    syncPageVisibility();
+    document.addEventListener('visibilitychange', syncPageVisibility);
+    return () => document.removeEventListener('visibilitychange', syncPageVisibility);
+  }, [pauseTimer, resumeTimer]);
+
+  useEffect(() => {
+    const syncModalVisibility = () => {
+      if (document.querySelector('[aria-modal="true"], dialog[open]')) pauseTimer('modal');
+      else resumeTimer('modal');
+    };
+
+    syncModalVisibility();
+    const observer = new MutationObserver(syncModalVisibility);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['aria-modal', 'open'],
+      childList: true,
+      subtree: true,
+    });
+    return () => observer.disconnect();
+  }, [pauseTimer, resumeTimer]);
+
   const handleSessionClose = useCallback(() => {
+    dismissedRef.current = true;
     setIsVisible(false);
     setIsDismissedForSession(true);
-    if (typeof window !== 'undefined') {
-      try {
-        sessionStorage.setItem('sabipredicts_hide_social_proof', 'true');
-      } catch {
-        // Fallback for sandboxed environments
-      }
+    try {
+      sessionStorage.setItem('sabipredicts_hide_social_proof', 'true');
+    } catch {
+      // Session storage may be unavailable in restricted browser contexts.
     }
-    if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
-    if (nextToastTimerRef.current) clearTimeout(nextToastTimerRef.current);
-  }, []);
+    clearScheduledTimer();
+  }, [clearScheduledTimer]);
 
-  // Schedule the next toast after a random interval between 12s and 25s
-  const scheduleNextToast = useCallback(() => {
-    if (nextToastTimerRef.current) clearTimeout(nextToastTimerRef.current);
-
-    const randomInterval = Math.floor(Math.random() * (25000 - 12000 + 1)) + 12000;
-    nextToastTimerRef.current = setTimeout(() => {
-      const nextNotif = generateRandomSocialProof();
-      setNotification(nextNotif);
-      setIsVisible(true);
-    }, randomInterval);
-  }, []);
-
-  // Start auto-dismiss timer (6 seconds)
-  const startDismissTimer = useCallback(() => {
-    if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
-    dismissTimerRef.current = setTimeout(() => {
-      setIsVisible(false);
-      scheduleNextToast();
-    }, 6000);
-  }, [scheduleNextToast]);
-
-  // Initial display timer on mount (5s delay so page loads cleanly)
-  useEffect(() => {
-    if (isDismissedForSession || isAdminRoute) return;
-
-    const initialDelayTimer = setTimeout(() => {
-      const initialNotif = generateRandomSocialProof();
-      setNotification(initialNotif);
-      setIsVisible(true);
-    }, 5000);
-
-    return () => {
-      clearTimeout(initialDelayTimer);
-      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
-      if (nextToastTimerRef.current) clearTimeout(nextToastTimerRef.current);
-    };
-  }, [isDismissedForSession, isAdminRoute]);
-
-  // Auto-dismiss management when visibility changes or hover state updates
-  useEffect(() => {
-    if (isVisible && !isHovered) {
-      startDismissTimer();
-    }
-    return () => {
-      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
-    };
-  }, [isVisible, isHovered, startDismissTimer]);
-
-  // Hover handlers to pause auto-dismiss
-  const handleMouseEnter = () => {
-    setIsHovered(true);
-    if (dismissTimerRef.current) {
-      clearTimeout(dismissTimerRef.current);
-    }
-  };
-
-  const handleMouseLeave = () => {
-    setIsHovered(false);
-    if (isVisible) {
-      startDismissTimer();
-    }
-  };
-
-  // If dismissed for session, or on admin route, or no notification yet, render nothing
   if (isDismissedForSession || isAdminRoute || !notification) {
     return null;
   }
@@ -120,9 +153,14 @@ export default function SocialProofToast() {
   return (
     <aside
       aria-live="polite"
+      aria-atomic="true"
       aria-label="Live Activity Notification"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onPointerEnter={() => pauseTimer('pointer')}
+      onPointerLeave={() => resumeTimer('pointer')}
+      onFocusCapture={() => pauseTimer('focus')}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) resumeTimer('focus');
+      }}
       className={`fixed z-40 bottom-20 left-4 right-4 sm:right-auto sm:left-6 md:bottom-6 md:left-6 max-w-sm transition-all duration-500 ease-out ${
         isVisible
           ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto'
