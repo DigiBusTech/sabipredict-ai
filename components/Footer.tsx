@@ -82,12 +82,14 @@ export default function Footer() {
             © {new Date().getFullYear()} SabiPredict AI. {t('footer.allRightsReserved', 'All rights reserved.')}
           </p>
           <div className="flex items-center gap-4 text-[11px] text-slate-500">
-            <Link href="/pricing" className="hover:text-slate-400 transition-colors">
-              {t('footer.termsLink', 'Terms & VIP Access')}
+            <Link href="/terms" className="hover:text-slate-400 transition-colors">
+              Terms
             </Link>
-            <span>•</span>
-            <Link href="/blog" className="hover:text-slate-400 transition-colors">
-              {t('footer.responsibleLink', 'Responsible Analytics')}
+            <Link href="/privacy" className="hover:text-slate-400 transition-colors">
+              Privacy
+            </Link>
+            <Link href="/affiliate-policy" className="hover:text-slate-400 transition-colors">
+              Affiliate Policy
             </Link>
           </div>
         </div>

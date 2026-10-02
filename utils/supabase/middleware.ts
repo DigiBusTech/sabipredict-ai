@@ -56,5 +56,20 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
+  if (user && !pathname.startsWith('/admin') && !pathname.startsWith('/support/appeal')) {
+    const { data: moderation } = await supabase
+      .from('account_moderation')
+      .select('status')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (moderation && ['flagged', 'suspended', 'banned'].includes(moderation.status)) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/support/appeal';
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
+  }
+
   return supabaseResponse;
 }

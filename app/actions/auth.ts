@@ -25,6 +25,19 @@ export async function signInAction(formData: FormData) {
     return { error: error.message };
   }
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: moderation } = await supabase
+      .from('account_moderation')
+      .select('status')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (moderation && ['flagged', 'suspended', 'banned'].includes(moderation.status)) {
+      revalidatePath('/', 'layout');
+      redirect('/support/appeal');
+    }
+  }
+
   revalidatePath('/', 'layout');
   redirect(redirectTo);
 }
@@ -34,6 +47,7 @@ export async function signUpAction(formData: FormData) {
   const password = formData.get('password') as string;
   const confirmPassword = formData.get('confirmPassword') as string;
   const fullName = (formData.get('fullName') as string)?.trim();
+  const referralCode = (formData.get('referralCode') as string | null)?.trim().toUpperCase();
 
   if (!email || !password) {
     return { error: 'Email and password are required.' };
@@ -61,6 +75,25 @@ export async function signUpAction(formData: FormData) {
 
   if (error) {
     return { error: error.message };
+  }
+
+  if (data.user?.id && referralCode && /^[A-Z0-9]{8,16}$/.test(referralCode)) {
+    try {
+      const admin = createAdminClient();
+      const { data: affiliate } = await admin
+        .from('affiliate_profiles')
+        .select('user_id')
+        .eq('referral_code', referralCode)
+        .maybeSingle();
+      if (affiliate && affiliate.user_id !== data.user.id) {
+        await admin.from('referral_attributions').insert({
+          referrer_id: affiliate.user_id,
+          referred_user_id: data.user.id,
+        });
+      }
+    } catch (referralError) {
+      console.error('Referral attribution could not be recorded:', referralError);
+    }
   }
 
   revalidatePath('/', 'layout');

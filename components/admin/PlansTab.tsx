@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Edit3, Trash2, X } from 'lucide-react';
-import { SubscriptionPlan } from '@/lib/types';
+import { Edit3, Trash2, X } from 'lucide-react';
+import { BillingInterval, SubscriptionPlan, VipPlanTier } from '@/lib/types';
 import { saveSubscriptionPlanAction, deleteSubscriptionPlanAction } from '@/app/actions/subscription';
 
 export default function PlansTab({ plans }: { plans: SubscriptionPlan[] }) {
@@ -19,7 +19,8 @@ export default function PlansTab({ plans }: { plans: SubscriptionPlan[] }) {
       name: fd.get('name') as string,
       price: parseFloat((fd.get('price') as string) || '0'),
       currency: 'USD',
-      interval: (fd.get('interval') as any) || 'monthly',
+      interval: (fd.get('interval') as BillingInterval) || 'monthly',
+      tier: (fd.get('tier') as VipPlanTier) || 'standard',
       features: (fd.get('features') as string).split('\n').map((s) => s.trim()).filter(Boolean),
       is_active: fd.get('is_active') === 'true',
     };
@@ -48,7 +49,7 @@ export default function PlansTab({ plans }: { plans: SubscriptionPlan[] }) {
           <p className="text-xs text-slate-400">Configure Free and VIP Lounge tier pricing and features.</p>
         </div>
         <button
-          onClick={() => setEditingPlan({ id: `plan_${Date.now()}`, name: '', price: 29.99, interval: 'monthly', features: [], is_active: true })}
+          onClick={() => setEditingPlan({ id: `plan_${Date.now()}`, name: '', price: 29.99, tier: 'standard', interval: 'monthly', features: [], is_active: true })}
           className="rounded-xl bg-[#48CAE4] px-3.5 py-2 text-xs font-bold text-[#0B132B]"
         >
           + New Plan
@@ -68,9 +69,17 @@ export default function PlansTab({ plans }: { plans: SubscriptionPlan[] }) {
             <input name="name" defaultValue={editingPlan.name} placeholder="Plan Name" required className="rounded-xl bg-[#0B132B] border border-[#223156] px-3 py-2 text-white" />
             <input name="price" type="number" step="0.01" defaultValue={editingPlan.price} placeholder="Price" required className="rounded-xl bg-[#0B132B] border border-[#223156] px-3 py-2 text-white" />
           </div>
+          <select name="tier" defaultValue={editingPlan.tier || 'standard'} className="rounded-xl bg-[#0B132B] border border-[#223156] px-3 py-2 text-white">
+            <option value="free">Free</option>
+            <option value="standard">Standard VIP</option>
+            <option value="gold">Gold VIP</option>
+            <option value="platinum">Platinum VIP</option>
+          </select>
           <select name="interval" defaultValue={editingPlan.interval} className="rounded-xl bg-[#0B132B] border border-[#223156] px-3 py-2 text-white">
+            <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
             <option value="yearly">Yearly</option>
+            <option value="lifetime">Lifetime</option>
           </select>
           <textarea name="features" defaultValue={editingPlan.features?.join('\n')} rows={3} placeholder="Features (one per line)..." className="w-full rounded-xl bg-[#0B132B] border border-[#223156] p-2 text-white" />
           <div className="flex justify-between items-center">
@@ -91,6 +100,7 @@ export default function PlansTab({ plans }: { plans: SubscriptionPlan[] }) {
                 <span className="font-bold text-sm text-white">{p.name}</span>
                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${p.is_active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>{p.is_active ? 'ACTIVE' : 'INACTIVE'}</span>
               </div>
+              <p className="text-[10px] font-bold uppercase text-amber-300">{p.tier || 'standard'} tier</p>
               <p className="text-xl font-black text-white">${Number(p.price).toFixed(2)} /{p.interval}</p>
             </div>
             <div className="flex justify-end gap-2 pt-3 mt-3 border-t border-[#1C2541]">

@@ -7,7 +7,7 @@ import {
   CheckCircle, Wallet, ArrowRight, X, AlertCircle, Loader2,
   UploadCloud, FileText, Image as ImageIcon, Trash
 } from 'lucide-react';
-import { SubscriptionPlan, UserProfile, ManualPaymentMethod } from '@/lib/types';
+import { BillingInterval, SubscriptionPlan, UserProfile, ManualPaymentMethod } from '@/lib/types';
 import { createCheckoutSessionAction } from '@/app/actions/subscription';
 import { submitManualPaymentProofAction, uploadPaymentProofAction } from '@/app/actions/payments';
 
@@ -23,6 +23,7 @@ export default function PricingClient({
   initialManualMethods?: ManualPaymentMethod[];
 }) {
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>('monthly');
 
   // Manual payment checkout state
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
@@ -44,6 +45,11 @@ export default function PricingClient({
   const [gatewayNotice, setGatewayNotice] = useState<{ open: boolean; provider: string; msg?: string } | null>(null);
 
   const isVip = userProfile?.role === 'vip_user' || userProfile?.role === 'admin';
+  const freePlans = plans.filter((plan) => plan.tier === 'free' || plan.id.toLowerCase().includes('free'));
+  const visiblePlans = [
+    ...freePlans,
+    ...plans.filter((plan) => plan.interval === billingInterval && !freePlans.some((freePlan) => freePlan.id === plan.id)),
+  ];
 
   const handleSubscribe = async (plan: SubscriptionPlan) => {
     if (!userProfile) {
@@ -173,9 +179,21 @@ export default function PricingClient({
 
   return (
     <div className="space-y-10">
+      <div className="flex justify-center" role="group" aria-label="Billing interval">
+        <div className="inline-flex flex-wrap justify-center gap-1 rounded-xl border border-[#1C2541] bg-[#111C38] p-1">
+          {(['weekly', 'monthly', 'yearly', 'lifetime'] as BillingInterval[]).map((interval) => (
+            <button key={interval} type="button" onClick={() => setBillingInterval(interval)} aria-pressed={billingInterval === interval}
+              className={`rounded-lg px-3 py-2 text-xs font-bold capitalize transition ${billingInterval === interval ? 'bg-[#48CAE4] text-[#0B132B]' : 'text-slate-400 hover:text-white'}`}>
+              {interval}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {plans.map((plan) => {
-          const isVipPlan = plan.id.includes('vip');
+        {visiblePlans.length === 0 ? (
+          <p className="col-span-full rounded-xl border border-dashed border-[#33415F] p-8 text-center text-sm text-slate-400">No plans are currently available for this billing interval.</p>
+        ) : visiblePlans.map((plan) => {
+          const isVipPlan = plan.tier !== 'free' && !plan.id.toLowerCase().includes('free');
           return (
             <div
               key={plan.id}
@@ -187,7 +205,10 @@ export default function PricingClient({
             >
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-base font-black text-white">{plan.name}</h3>
+                  <div>
+                    <h3 className="text-base font-black text-white">{plan.name}</h3>
+                    <p className="mt-1 text-[10px] font-bold uppercase text-amber-300">{plan.tier || 'standard'} tier</p>
+                  </div>
                   {isVipPlan ? <Crown className="h-4 w-4 text-amber-400" /> : <Shield className="h-4 w-4 text-slate-400" />}
                 </div>
 

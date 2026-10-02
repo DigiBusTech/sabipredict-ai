@@ -3,11 +3,14 @@ import PredictionsFeed from '@/components/PredictionsFeed';
 import HeroSection from '@/components/HeroSection';
 import PredictionsSectionHeader from '@/components/PredictionsSectionHeader';
 import HomeBlogSection from '@/components/HomeBlogSection';
+import TestimonialsSection from '@/components/TestimonialsSection';
 import { getCurrentUserProfile, getBlogPosts } from '@/lib/db';
+import { getApprovedTestimonials } from '@/lib/growth';
 
 export default async function HomePage() {
   const profile = await getCurrentUserProfile();
   const posts = await getBlogPosts(true);
+  const testimonials = await getApprovedTestimonials(true);
 
   const now = new Date();
   const yest = new Date(now);
@@ -36,6 +39,10 @@ export default async function HomePage() {
           userProfile={profile}
         />
       </section>
+
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <TestimonialsSection testimonials={testimonials.slice(0, 3)} userProfile={profile} featuredOnly />
+      </div>
 
       {/* Featured Blog Insights Section */}
       <HomeBlogSection posts={posts} />

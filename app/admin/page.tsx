@@ -12,6 +12,7 @@ import {
 } from '@/lib/db';
 import { fetchAvailableLeagues } from '@/lib/fixtures-service';
 import { getAdminWinningTickets } from '@/lib/winning-tickets';
+import { getAdminAffiliateData, getAdminAppeals, getAdminPolicyPages, getAdminTestimonials, getAdminUsers } from '@/lib/growth';
 import { 
   SportsmonksSettings, 
   PaymentGatewaySettings, 
@@ -35,6 +36,11 @@ export default async function AdminDashboardPage() {
     manualMethods,
     pendingSubscriptions,
     winningTickets,
+    testimonials,
+    affiliateData,
+    appeals,
+    users,
+    policyPages,
   ] = await Promise.all([
     getAdminPredictions(),
     getBlogPosts(false),
@@ -49,6 +55,11 @@ export default async function AdminDashboardPage() {
     getManualPaymentMethods(),
     getPendingSubscriptions(),
     getAdminWinningTickets(),
+    getAdminTestimonials(),
+    getAdminAffiliateData(),
+    getAdminAppeals(),
+    getAdminUsers(),
+    getAdminPolicyPages(),
   ]);
 
   const { leagues, activeProvider } = await fetchAvailableLeagues();
@@ -70,6 +81,12 @@ export default async function AdminDashboardPage() {
       manualMethods={manualMethods}
       pendingSubscriptions={pendingSubscriptions}
       winningTickets={winningTickets}
+      testimonials={testimonials}
+      affiliateSettings={affiliateData.settings}
+      affiliatePayouts={affiliateData.payouts}
+      appeals={appeals}
+      managedUsers={users}
+      policyPages={policyPages}
     />
   );
 }

@@ -160,6 +160,25 @@ export async function submitManualPaymentProofAction(
     };
   }
 
+  const supabase = createAdminClient();
+  const [planResult, methodResult, moderationResult] = await Promise.all([
+    supabase.from('subscription_plans').select('id, tier, price, is_active').eq('id', planId).maybeSingle(),
+    supabase.from('manual_payment_methods').select('require_file_proof').eq('method_name', paymentMethodUsed).eq('is_active', true).maybeSingle(),
+    supabase.from('account_moderation').select('status').eq('user_id', user.id).maybeSingle(),
+  ]);
+  if (!planResult.data || !planResult.data.is_active || planResult.data.tier === 'free' || Number(planResult.data.price) <= 0) {
+    return { success: false, error: 'This membership plan is no longer available.' };
+  }
+  if (!methodResult.data) {
+    return { success: false, error: 'This payment method is no longer available.' };
+  }
+  if (methodResult.data.require_file_proof && !proofFileUrl) {
+    return { success: false, error: 'A payment receipt is required for this method.' };
+  }
+  if (moderationResult.data && ['flagged', 'suspended', 'banned'].includes(moderationResult.data.status)) {
+    return { success: false, error: 'Your account is restricted. Visit the appeal center for details.' };
+  }
+
   const res = await createPendingSubscription({
     user_id: user.id,
     plan_id: planId,

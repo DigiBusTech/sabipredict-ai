@@ -12,9 +12,18 @@ import { createAdminClient } from '@/utils/supabase/admin';
 import { SubscriptionPlan, PaymentGatewaySettings } from '@/lib/types';
 
 export async function createCheckoutSessionAction(planId: string, providerOverride?: string) {
-  const { user, profile } = await getCurrentUser();
+  const { user } = await getCurrentUser();
   if (!user) {
     return { error: 'Please log in to upgrade to VIP Lounge.', redirect: '/login' };
+  }
+
+  const planClient = createAdminClient();
+  const { data: plan } = await planClient.from('subscription_plans')
+    .select('id, tier, price, is_active')
+    .eq('id', planId)
+    .maybeSingle();
+  if (!plan || !plan.is_active || plan.tier === 'free' || Number(plan.price) <= 0) {
+    return { error: 'This membership plan is not available for checkout.' };
   }
 
   const paymentSettings = await getSystemSettings<PaymentGatewaySettings>('payment_gateways');
@@ -75,6 +84,13 @@ export async function saveSubscriptionPlanAction(plan: SubscriptionPlan) {
   const { profile } = await getCurrentUser();
   if (!profile || profile.role !== 'admin') {
     throw new Error('Admin privileges required.');
+  }
+
+  if (!plan.id?.trim() || plan.id.length > 100 || !plan.name?.trim() || plan.name.length > 120 ||
+      !Number.isFinite(Number(plan.price)) || Number(plan.price) < 0 ||
+      !['weekly', 'monthly', 'yearly', 'lifetime'].includes(plan.interval) ||
+      !['free', 'standard', 'gold', 'platinum'].includes(plan.tier || 'standard')) {
+    return { success: false, error: 'Plan details are invalid.' };
   }
 
   const success = await upsertSubscriptionPlan(plan);

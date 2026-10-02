@@ -478,7 +478,7 @@ export async function upsertSubscriptionPlan(plan: SubscriptionPlan): Promise<bo
 export async function deleteSubscriptionPlan(id: string): Promise<boolean> {
   try {
     const supabase = createAdminClient();
-    const { error } = await supabase.from('subscription_plans').delete().eq('id', id);
+    const { error } = await supabase.from('subscription_plans').update({ is_active: false }).eq('id', id);
     return !error;
   } catch {
     return false;
@@ -906,6 +906,10 @@ export async function approvePendingSubscription(
 ): Promise<{ success: boolean; error?: string; userEmail?: string }> {
   try {
     const supabase = createAdminClient();
+    const sessionClient = await createClient();
+    const { data: { user: adminUser } } = await sessionClient.auth.getUser();
+    if (!adminUser) return { success: false, error: 'Authentication required.' };
+
     const all = await getPendingSubscriptions();
     const target = all.find((s) => s.id === pendingId);
 
@@ -913,48 +917,16 @@ export async function approvePendingSubscription(
       return { success: false, error: 'Subscription request not found.' };
     }
 
-    // Determine duration based on plan
-    let durationDays = 30; // default monthly
-    const planLower = (target.plan_id + ' ' + (target.plan_name || '')).toLowerCase();
-    if (planLower.includes('yearly') || planLower.includes('annual')) {
-      durationDays = 365;
-    } else if (planLower.includes('quarterly')) {
-      durationDays = 90;
-    } else if (planLower.includes('lifetime')) {
-      durationDays = 3650;
-    }
+    const { error: approvalError } = await supabase.rpc('approve_subscription_with_commission', {
+      p_pending_id: pendingId,
+      p_admin_id: adminUser.id,
+      p_admin_notes: adminNotes || null,
+    });
+    if (approvalError) return { success: false, error: approvalError.message };
 
-    const vipUntil = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+    const { data: approvedProfile } = await supabase.from('profiles').select('vip_until').eq('id', target.user_id).maybeSingle();
+    const vipUntil = approvedProfile?.vip_until || new Date().toISOString();
 
-    // 1. Upgrade user in profiles (safely handling optional vip_until column)
-    const profilePayload: any = {
-      role: 'vip_user',
-      subscription_status: 'active',
-      subscription_tier: 'vip',
-      updated_at: new Date().toISOString(),
-    };
-
-    let { error: profileErr } = await supabase
-      .from('profiles')
-      .update({ ...profilePayload, vip_until: vipUntil })
-      .eq('id', target.user_id);
-
-    if (profileErr && (profileErr.code === 'PGRST204' || profileErr.message?.includes('vip_until'))) {
-      const { error: retryErr } = await supabase
-        .from('profiles')
-        .update(profilePayload)
-        .eq('id', target.user_id);
-      profileErr = retryErr;
-    }
-
-    if (profileErr) {
-      console.error('Error upgrading user profile to VIP:', profileErr);
-    }
-
-    // 2. Mark pending subscription as approved
-    await updatePendingSubscriptionStatus(pendingId, 'approved', adminNotes || 'Approved by administrator');
-
-    // 3. Send approval confirmation email
     if (target.user_email) {
       await sendSubscriptionApprovedEmail({
         to: target.user_email,

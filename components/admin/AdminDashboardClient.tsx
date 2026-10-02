@@ -3,13 +3,14 @@
 import React, { useState } from 'react';
 import { 
   CheckSquare, BookOpen, Key, Cpu, CreditCard, 
-  Palette, Bell, ShieldCheck 
+  Palette, Bell, ShieldCheck, MessageSquareQuote, Users, Wallet, FileText, AlertTriangle
 } from 'lucide-react';
 import { 
   Prediction, BlogPost, SportsmonksSettings, 
   PaymentGatewaySettings, AILLMSettings, SubscriptionPlan,
   DataProviderSettings, SiteBrandingSettings, UserProfile,
-  SubscriptionReminderLog, LeagueOption, DataProviderType, WinningTicket
+  SubscriptionReminderLog, LeagueOption, DataProviderType, WinningTicket,
+  Testimonial, AffiliatePayoutRequest, AffiliateSettings, AccountAppeal, AdminManagedUser, PolicyPage
 } from '@/lib/types';
 import PredictionsTab from './PredictionsTab';
 import BlogTab from './BlogTab';
@@ -21,6 +22,11 @@ import RemindersTab from './RemindersTab';
 import PendingPaymentsTab from './PendingPaymentsTab';
 import { ManualPaymentMethod, PendingSubscription } from '@/lib/types';
 import WinningTicketsTab from './WinningTicketsTab';
+import TestimonialsTab from './TestimonialsTab';
+import AffiliatesTab from './AffiliatesTab';
+import AppealsTab from './AppealsTab';
+import UsersTab from './UsersTab';
+import PoliciesTab from './PoliciesTab';
 
 interface AdminDashboardClientProps {
   predictions: Prediction[];
@@ -38,6 +44,12 @@ interface AdminDashboardClientProps {
   manualMethods?: ManualPaymentMethod[];
   pendingSubscriptions?: PendingSubscription[];
   winningTickets?: WinningTicket[];
+  testimonials?: Testimonial[];
+  affiliateSettings?: AffiliateSettings;
+  affiliatePayouts?: AffiliatePayoutRequest[];
+  appeals?: AccountAppeal[];
+  managedUsers?: AdminManagedUser[];
+  policyPages?: PolicyPage[];
 }
 
 export default function AdminDashboardClient({
@@ -56,19 +68,32 @@ export default function AdminDashboardClient({
   manualMethods = [],
   pendingSubscriptions = [],
   winningTickets = [],
+  testimonials = [],
+  affiliateSettings = { commission_percent: 15, minimum_payout: 20 },
+  affiliatePayouts = [],
+  appeals = [],
+  managedUsers = [],
+  policyPages = [],
 }: AdminDashboardClientProps) {
   const [activeTab, setActiveTab] = useState<
-    'predictions' | 'blog' | 'api' | 'ai' | 'plans' | 'branding' | 'reminders' | 'pending-payments' | 'winning-tickets'
+    'predictions' | 'blog' | 'api' | 'ai' | 'plans' | 'branding' | 'reminders' | 'pending-payments' | 'winning-tickets' | 'testimonials' | 'affiliates' | 'appeals' | 'users' | 'policies'
   >('predictions');
 
   const pendingCount = predictions.filter((p) => p.status === 'pending').length;
   const pendingSubsCount = pendingSubscriptions.filter((s) => s.status === 'pending').length;
   const pendingTicketsCount = winningTickets.filter((ticket) => ticket.status === 'pending').length;
+  const pendingAppealsCount = appeals.filter((appeal) => appeal.status === 'pending').length;
+  const pendingPayoutsCount = affiliatePayouts.filter((payout) => payout.status === 'pending').length;
 
   const tabs = [
     { id: 'predictions', label: 'Predictions Moderation', icon: CheckSquare, badge: pendingCount },
     { id: 'pending-payments', label: 'Subscription Approvals', icon: ShieldCheck, badge: pendingSubsCount },
     { id: 'winning-tickets', label: 'Winning Tickets', icon: ShieldCheck, badge: pendingTicketsCount },
+    { id: 'testimonials', label: 'Testimonials', icon: MessageSquareQuote, badge: testimonials.filter((item) => item.status === 'pending').length },
+    { id: 'affiliates', label: 'Affiliates & Payouts', icon: Wallet, badge: pendingPayoutsCount },
+    { id: 'users', label: 'Users', icon: Users, badge: managedUsers.length },
+    { id: 'appeals', label: 'Appeals', icon: AlertTriangle, badge: pendingAppealsCount },
+    { id: 'policies', label: 'Policy Pages', icon: FileText },
     { id: 'blog', label: 'Blog Management', icon: BookOpen, badge: posts.length },
     { id: 'api', label: 'API Management', icon: Key },
     { id: 'ai', label: 'AI & LLM Management', icon: Cpu },
@@ -123,6 +148,11 @@ export default function AdminDashboardClient({
           <PendingPaymentsTab initialItems={pendingSubscriptions} />
         )}
         {activeTab === 'winning-tickets' && <WinningTicketsTab initialTickets={winningTickets} />}
+        {activeTab === 'testimonials' && <TestimonialsTab initialItems={testimonials} />}
+        {activeTab === 'affiliates' && <AffiliatesTab initialSettings={affiliateSettings} initialPayouts={affiliatePayouts} />}
+        {activeTab === 'users' && <UsersTab initialUsers={managedUsers} />}
+        {activeTab === 'appeals' && <AppealsTab initialItems={appeals} />}
+        {activeTab === 'policies' && <PoliciesTab initialPages={policyPages} />}
         {activeTab === 'blog' && <BlogTab posts={posts} />}
         {activeTab === 'api' && (
           <ApiTab

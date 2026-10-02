@@ -42,6 +42,7 @@ export default function SignUpPage() {
 
     const formData = new FormData(e.currentTarget);
     formData.append('confirmPassword', confirmPassword);
+    formData.append('referralCode', new URLSearchParams(window.location.search).get('ref') || '');
 
     const res = await signUpAction(formData);
 
@@ -131,7 +132,7 @@ export default function SignUpPage() {
                 Password
               </label>
               <span className={`text-[10px] font-mono flex items-center gap-1 ${hasMinLength ? 'text-emerald-400 font-bold' : 'text-slate-500'}`}>
-                {hasMinLength ? <Check className="h-3 w-3 stroke-[3]" /> : '•'} Min. 6 chars
+                {hasMinLength ? <Check className="h-3 w-3 stroke-3" /> : '•'} Min. 6 chars
               </span>
             </div>
             <div className="relative">
@@ -164,7 +165,7 @@ export default function SignUpPage() {
               </label>
               {passwordsMatch && (
                 <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1 animate-in fade-in">
-                  <Check className="h-3 w-3 stroke-[3]" /> Passwords match
+                  <Check className="h-3 w-3 stroke-3" /> Passwords match
                 </span>
               )}
               {passwordsMismatch && (

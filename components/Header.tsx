@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   TrendingUp, Crown, BookOpen, ShieldCheck, Menu, X, 
-  CreditCard, LogOut, UserCheck, Activity, User
+  CreditCard, LogOut, UserCheck, Activity, User, Users, MessageSquareQuote
 } from 'lucide-react';
 import { UserProfile, SiteBrandingSettings } from '@/lib/types';
 import { signOutAction } from '@/app/actions/auth';
@@ -32,7 +32,9 @@ export default function Header({
     { href: '/pricing', label: t('nav.pricing', 'Pricing'), icon: CreditCard },
     { href: '/vip', label: t('nav.vipLounge', 'VIP Lounge'), icon: Crown },
     { href: '/blog', label: t('nav.blog', 'Blog'), icon: BookOpen },
+    { href: '/testimonials', label: 'Reviews', icon: MessageSquareQuote },
     ...(userProfile ? [{ href: '/account', label: t('nav.mySubscription', 'My Subscription'), icon: User }] : []),
+    ...(userProfile?.role === 'vip_user' && userProfile.subscription_status === 'active' ? [{ href: '/vip/affiliate', label: 'Affiliate', icon: Users }] : []),
     ...(isAdmin ? [{ href: '/admin', label: t('nav.adminPanel', 'Admin Panel'), icon: ShieldCheck, admin: true }] : []),
   ];
 
@@ -71,7 +73,7 @@ export default function Header({
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                   active
                     ? 'bg-[#1C2541] text-[#48CAE4] border border-[#3A506B]'
-                    : (link as any).admin
+                    : 'admin' in link && link.admin
                     ? 'text-rose-400 hover:bg-rose-950/30'
                     : 'text-slate-300 hover:bg-[#1C2541] hover:text-white'
                 }`}

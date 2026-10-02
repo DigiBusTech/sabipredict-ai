@@ -1,6 +1,8 @@
 export type UserRole = 'admin' | 'vip_user' | 'free_user';
 export type SubscriptionStatus = 'active' | 'inactive' | 'canceled' | 'past_due';
 export type SubscriptionTier = 'free' | 'vip';
+export type BillingInterval = 'weekly' | 'monthly' | 'yearly' | 'lifetime';
+export type VipPlanTier = 'free' | 'standard' | 'gold' | 'platinum';
 
 export interface UserProfile {
   id: string; // References auth.users(id)
@@ -12,6 +14,7 @@ export interface UserProfile {
   created_at: string;
   updated_at: string;
   vip_until?: string | null;
+  current_plan_id?: string | null;
 
 }
 
@@ -153,11 +156,125 @@ export interface SubscriptionPlan {
   name: string;
   price: number;
   currency: string;
-  interval: 'monthly' | 'yearly' | 'lifetime';
+  interval: BillingInterval;
+  tier?: VipPlanTier;
   features: string[];
   is_active: boolean;
   created_at?: string;
 }
+
+export type TestimonialStatus = 'pending' | 'approved' | 'rejected';
+export interface Testimonial {
+  id: string;
+  user_id?: string | null;
+  author_name: string;
+  avatar_url?: string | null;
+  role_title: string;
+  content: string;
+  rating: number;
+  is_featured: boolean;
+  status: TestimonialStatus;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface AffiliateSettings {
+  commission_percent: number;
+  minimum_payout: number;
+}
+
+export interface AffiliateLedgerEntry {
+  id: string;
+  referred_user_id?: string | null;
+  entry_type: 'commission' | 'adjustment' | 'reversal';
+  amount: number;
+  description: string;
+  created_at: string;
+}
+
+export interface AffiliatePayoutRequest {
+  id: string;
+  user_id: string;
+  amount: number;
+  payout_method: 'bank' | 'crypto';
+  payout_details: string;
+  status: 'pending' | 'approved' | 'rejected' | 'paid';
+  admin_note?: string | null;
+  payment_reference?: string | null;
+  requested_at: string;
+  resolved_at?: string | null;
+  resolved_by?: string | null;
+  user_name?: string | null;
+  user_email?: string | null;
+}
+
+export interface AffiliateReferral {
+  id: string;
+  referred_user_id: string;
+  created_at: string;
+  referred_name: string;
+  referred_email: string;
+  current_plan_id?: string | null;
+  subscription_status: SubscriptionStatus;
+  commission_total: number;
+}
+
+export interface AffiliateDashboardData {
+  referral_code: string;
+  settings: AffiliateSettings;
+  balance: number;
+  available_balance: number;
+  lifetime_commissions: number;
+  referrals: AffiliateReferral[];
+  ledger: AffiliateLedgerEntry[];
+  payouts: AffiliatePayoutRequest[];
+}
+
+export type AccountModerationStatus = 'active' | 'flagged' | 'suspended' | 'banned';
+export interface AccountModeration {
+  user_id: string;
+  status: AccountModerationStatus;
+  reason?: string | null;
+  previous_role?: UserRole | null;
+  previous_subscription_tier?: SubscriptionTier | null;
+  previous_plan_id?: string | null;
+  previous_subscription_status?: SubscriptionStatus | null;
+  previous_vip_until?: string | null;
+  updated_at: string;
+}
+
+export interface AdminManagedUser {
+  id: string;
+  email: string;
+  full_name?: string | null;
+  role: UserRole;
+  subscription_status: SubscriptionStatus;
+  current_plan_id?: string | null;
+  created_at: string;
+  moderation: AccountModeration;
+  referral_count: number;
+}
+
+export interface AccountAppeal {
+  id: string;
+  user_id: string;
+  message: string;
+  status: 'pending' | 'reinstated' | 'rejected';
+  admin_response?: string | null;
+  reviewed_at?: string | null;
+  created_at: string;
+  user_email?: string;
+  user_name?: string | null;
+}
+
+export interface PolicyPage {
+  slug: 'terms' | 'privacy' | 'affiliate-policy';
+  title: string;
+  content: string;
+  is_published: boolean;
+  updated_at: string;
+}
+
 export interface SiteBrandingSettings {
   site_name: string;
   site_tagline?: string;
