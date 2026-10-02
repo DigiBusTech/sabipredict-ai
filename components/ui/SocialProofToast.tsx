@@ -218,7 +218,7 @@ export default function SocialProofToast() {
             {/* Detail & Time row */}
             <div className="flex items-center gap-2 pt-1 text-[10px] text-slate-400">
               {notification.detail && (
-                <span className="font-mono text-cyan-300/90 truncate max-w-[210px] sm:max-w-[250px]">
+                <span className="font-mono text-cyan-300/90 truncate max-w-52.5 sm:max-w-62.5">
                   {notification.detail}
                 </span>
               )}
