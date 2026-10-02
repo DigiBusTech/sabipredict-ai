@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import DateSelectorBar from './DateSelectorBar';
 import PredictionCard from './PredictionCard';
 import StatsSummary from './StatsSummary';
+import WinningTicketsSection from './WinningTicketsSection';
 import { Prediction, UserProfile } from '@/lib/types';
 import { Sparkles, RefreshCw } from 'lucide-react';
 
@@ -76,6 +77,8 @@ export default function PredictionsFeed({
         tomorrowStr={tomorrowStr}
         predictionsCount={filtered.length}
       />
+
+      <WinningTicketsSection selectedDate={selectedDate} userProfile={userProfile} />
 
       <StatsSummary predictions={filtered} dateLabel={dateLabel} />
 

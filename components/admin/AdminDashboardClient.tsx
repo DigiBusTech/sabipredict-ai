@@ -9,7 +9,7 @@ import {
   Prediction, BlogPost, SportsmonksSettings, 
   PaymentGatewaySettings, AILLMSettings, SubscriptionPlan,
   DataProviderSettings, SiteBrandingSettings, UserProfile,
-  SubscriptionReminderLog, LeagueOption, DataProviderType
+  SubscriptionReminderLog, LeagueOption, DataProviderType, WinningTicket
 } from '@/lib/types';
 import PredictionsTab from './PredictionsTab';
 import BlogTab from './BlogTab';
@@ -20,6 +20,7 @@ import BrandingTab from './BrandingTab';
 import RemindersTab from './RemindersTab';
 import PendingPaymentsTab from './PendingPaymentsTab';
 import { ManualPaymentMethod, PendingSubscription } from '@/lib/types';
+import WinningTicketsTab from './WinningTicketsTab';
 
 interface AdminDashboardClientProps {
   predictions: Prediction[];
@@ -36,6 +37,7 @@ interface AdminDashboardClientProps {
   initialProvider?: DataProviderType;
   manualMethods?: ManualPaymentMethod[];
   pendingSubscriptions?: PendingSubscription[];
+  winningTickets?: WinningTicket[];
 }
 
 export default function AdminDashboardClient({
@@ -53,17 +55,20 @@ export default function AdminDashboardClient({
   initialProvider,
   manualMethods = [],
   pendingSubscriptions = [],
+  winningTickets = [],
 }: AdminDashboardClientProps) {
   const [activeTab, setActiveTab] = useState<
-    'predictions' | 'blog' | 'api' | 'ai' | 'plans' | 'branding' | 'reminders' | 'pending-payments'
+    'predictions' | 'blog' | 'api' | 'ai' | 'plans' | 'branding' | 'reminders' | 'pending-payments' | 'winning-tickets'
   >('predictions');
 
   const pendingCount = predictions.filter((p) => p.status === 'pending').length;
   const pendingSubsCount = pendingSubscriptions.filter((s) => s.status === 'pending').length;
+  const pendingTicketsCount = winningTickets.filter((ticket) => ticket.status === 'pending').length;
 
   const tabs = [
     { id: 'predictions', label: 'Predictions Moderation', icon: CheckSquare, badge: pendingCount },
     { id: 'pending-payments', label: 'Subscription Approvals', icon: ShieldCheck, badge: pendingSubsCount },
+    { id: 'winning-tickets', label: 'Winning Tickets', icon: ShieldCheck, badge: pendingTicketsCount },
     { id: 'blog', label: 'Blog Management', icon: BookOpen, badge: posts.length },
     { id: 'api', label: 'API Management', icon: Key },
     { id: 'ai', label: 'AI & LLM Management', icon: Cpu },
@@ -82,7 +87,7 @@ export default function AdminDashboardClient({
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
                 isActive
                   ? 'bg-[#48CAE4] text-[#0B132B] shadow-lg shadow-[#48CAE4]/20'
@@ -117,6 +122,7 @@ export default function AdminDashboardClient({
         {activeTab === 'pending-payments' && (
           <PendingPaymentsTab initialItems={pendingSubscriptions} />
         )}
+        {activeTab === 'winning-tickets' && <WinningTicketsTab initialTickets={winningTickets} />}
         {activeTab === 'blog' && <BlogTab posts={posts} />}
         {activeTab === 'api' && (
           <ApiTab

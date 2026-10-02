@@ -104,4 +104,21 @@ input:-webkit-autofill:active {
   animation: scanline 4s linear infinite;
 }
 
+.ticket-stack-card {
+  transform: rotate(var(--ticket-rotation));
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.ticket-stack-card:hover,
+.ticket-stack-card:focus-visible {
+  transform: translateY(-12px) rotate(0deg);
+  box-shadow: 0 22px 45px rgba(0, 0, 0, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticket-stack-card {
+    transition: none;
+  }
+}
+
 

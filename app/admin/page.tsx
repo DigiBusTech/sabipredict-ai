@@ -11,6 +11,7 @@ import {
   getPendingSubscriptions
 } from '@/lib/db';
 import { fetchAvailableLeagues } from '@/lib/fixtures-service';
+import { getAdminWinningTickets } from '@/lib/winning-tickets';
 import { 
   SportsmonksSettings, 
   PaymentGatewaySettings, 
@@ -33,6 +34,7 @@ export default async function AdminDashboardPage() {
     reminderLogs,
     manualMethods,
     pendingSubscriptions,
+    winningTickets,
   ] = await Promise.all([
     getAdminPredictions(),
     getBlogPosts(false),
@@ -46,6 +48,7 @@ export default async function AdminDashboardPage() {
     getSubscriptionReminderLogs(100),
     getManualPaymentMethods(),
     getPendingSubscriptions(),
+    getAdminWinningTickets(),
   ]);
 
   const { leagues, activeProvider } = await fetchAvailableLeagues();
@@ -66,6 +69,7 @@ export default async function AdminDashboardPage() {
       initialProvider={activeProvider}
       manualMethods={manualMethods}
       pendingSubscriptions={pendingSubscriptions}
+      winningTickets={winningTickets}
     />
   );
 }

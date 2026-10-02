@@ -47,6 +47,23 @@ export interface Prediction {
   updated_at?: string;
 }
 
+export type WinningTicketStatus = 'pending' | 'approved' | 'rejected';
+
+export interface WinningTicket {
+  id: string;
+  image_url: string;
+  win_date: string;
+  bet_date?: string | null;
+  caption: string;
+  status: WinningTicketStatus;
+  moderation_note?: string | null;
+  moderated_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  user_email?: string | null;
+  user_name?: string | null;
+}
+
 export interface BlogPost {
   id: string;
   title: string;
