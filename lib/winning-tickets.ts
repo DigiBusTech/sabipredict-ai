@@ -52,6 +52,37 @@ export async function getApprovedWinningTickets(winDate: string): Promise<Winnin
   return withSignedUrls(data as TicketRow[]);
 }
 
+export async function getRecentApprovedWinningTickets(): Promise<WinningTicket[]> {
+  const today = new Date();
+  const todayString = today.toISOString().slice(0, 10);
+  const yesterday = new Date(today);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  const yesterdayString = yesterday.toISOString().slice(0, 10);
+  const startDate = new Date(today);
+  startDate.setUTCDate(startDate.getUTCDate() - 6);
+  const startDateString = startDate.toISOString().slice(0, 10);
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from('winning_tickets')
+    .select('id, user_id, image_path, win_date, bet_date, caption, status, moderation_note, moderated_by, moderated_at, created_at, updated_at')
+    .eq('status', 'approved')
+    .gte('win_date', startDateString)
+    .lte('win_date', todayString)
+    .order('win_date', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  if (error || !data) return [];
+
+  const rows = (data as TicketRow[]).sort((a, b) => {
+    const yesterdayPriority = Number(b.win_date === yesterdayString) - Number(a.win_date === yesterdayString);
+    if (yesterdayPriority !== 0) return yesterdayPriority;
+    return b.win_date.localeCompare(a.win_date) || b.created_at.localeCompare(a.created_at);
+  });
+
+  return withSignedUrls(rows);
+}
+
 export async function getUserWinningTickets(userId: string): Promise<WinningTicket[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase

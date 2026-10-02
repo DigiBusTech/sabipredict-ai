@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/admin';
-import { getAdminWinningTickets, getApprovedWinningTickets, getUserWinningTickets } from '@/lib/winning-tickets';
+import { getAdminWinningTickets, getApprovedWinningTickets, getRecentApprovedWinningTickets, getUserWinningTickets } from '@/lib/winning-tickets';
 
 const BUCKET = 'winning-tickets';
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -43,6 +43,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required.' }, { status: 403 });
     }
     return NextResponse.json({ data: await getAdminWinningTickets() }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
+  if (params.get('recent') === 'true') {
+    return NextResponse.json(
+      { data: await getRecentApprovedWinningTickets() },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
   }
 
   const winDate = params.get('date');

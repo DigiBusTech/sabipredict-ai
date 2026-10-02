@@ -8,6 +8,7 @@ import { UserProfile, WinningTicket } from '@/lib/types';
 
 interface WinningTicketsSectionProps {
   selectedDate: string;
+  yesterdayStr: string;
   userProfile?: UserProfile | null;
 }
 
@@ -19,8 +20,8 @@ function prettyDate(value: string) {
   });
 }
 
-export default function WinningTicketsSection({ selectedDate, userProfile }: WinningTicketsSectionProps) {
-  const [ticketData, setTicketData] = useState<{ date: string; tickets: WinningTicket[] } | null>(null);
+export default function WinningTicketsSection({ selectedDate, yesterdayStr, userProfile }: WinningTicketsSectionProps) {
+  const [ticketData, setTicketData] = useState<WinningTicket[] | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [showMine, setShowMine] = useState(false);
   const [myTickets, setMyTickets] = useState<WinningTicket[]>([]);
@@ -36,23 +37,23 @@ export default function WinningTicketsSection({ selectedDate, userProfile }: Win
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const previewUrlRef = useRef<string | null>(null);
-  const tickets = ticketData?.date === selectedDate ? ticketData.tickets : [];
-  const loading = ticketData?.date !== selectedDate;
+  const tickets = ticketData || [];
+  const loading = ticketData === null;
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/winning-tickets?date=${selectedDate}`, { cache: 'no-store' })
+    fetch('/api/winning-tickets?recent=true', { cache: 'no-store' })
       .then(async (response) => {
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'Could not load winning tickets.');
-        if (active) setTicketData({ date: selectedDate, tickets: result.data || [] });
+        if (active) setTicketData(result.data || []);
       })
       .catch(() => {
-        if (active) setTicketData({ date: selectedDate, tickets: [] });
+        if (active) setTicketData([]);
       });
 
     return () => { active = false; };
-  }, [selectedDate]);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -134,7 +135,7 @@ export default function WinningTicketsSection({ selectedDate, userProfile }: Win
             </span>
             <div>
               <h2 id="winning-tickets-heading" className="text-sm font-black text-white">Community Wins</h2>
-              <p className="text-[11px] text-slate-400">Winning tickets for {prettyDate(selectedDate)}</p>
+              <p className="text-[11px] text-slate-400">Approved wins from the last seven days</p>
             </div>
           </div>
         </div>
@@ -225,7 +226,7 @@ export default function WinningTicketsSection({ selectedDate, userProfile }: Win
       ) : tickets.length === 0 ? (
         <div className="flex min-h-32 flex-col items-center justify-center gap-1 px-4 py-6 text-center">
           <Camera className="mb-1 h-5 w-5 text-slate-500" />
-          <p className="text-xs font-bold text-slate-300">No approved tickets for this date</p>
+          <p className="text-xs font-bold text-slate-300">No approved tickets this week</p>
           <p className="text-[11px] text-slate-500">Approved community wins will appear here.</p>
         </div>
       ) : (
@@ -252,7 +253,9 @@ export default function WinningTicketsSection({ selectedDate, userProfile }: Win
                     </span>
                   </div>
                   <div className="px-3 py-2.5">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">Won {prettyDate(ticket.win_date)}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+                      {ticket.win_date === yesterdayStr ? 'Yesterday · ' : 'Won '}{prettyDate(ticket.win_date)}
+                    </p>
                     <p className="mt-1 line-clamp-1 text-xs font-semibold text-slate-200">{ticket.caption || 'Community winning ticket'}</p>
                   </div>
                 </button>

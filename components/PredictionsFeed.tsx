@@ -78,7 +78,7 @@ export default function PredictionsFeed({
         predictionsCount={filtered.length}
       />
 
-      <WinningTicketsSection selectedDate={selectedDate} userProfile={userProfile} />
+      <WinningTicketsSection selectedDate={selectedDate} yesterdayStr={yesterdayStr} userProfile={userProfile} />
 
       <StatsSummary predictions={filtered} dateLabel={dateLabel} />
 
